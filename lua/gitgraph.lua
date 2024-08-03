@@ -4,37 +4,50 @@
 ---@field start integer
 ---@field stop integer
 
+---@class I.GGSymbols
+---@field merge_commit string
+---@field commit string
+
+---@alias I.GGVarName "hash" | "timestamp" | "author" | "branch_name" | "tag" | "message"
+
+---@class I.GGFormat
+---@field timestamp? string
+---@field fields? I.GGVarName[]
+
+---@class I.GGConfig
+---@field symbols? I.GGSymbols
+---@field format? I.GGFormat
+
 ---@class I.HighlightGroup
 ---@field name string
 ---@field fg string
 ---
 local M = {
-  ---@type integer?
-  buf = nil,
+  ---@type I.GGConfig
   config = {
     symbols = {
       merge_commit = 'M',
-      head = 'H',
       commit = '*',
     },
     format = {
       timestamp = '%H:%M:%S %d-%m-%Y',
-      commit_line_1 = { 'hash', 'author', 'timestamp', 'branches', 'tags' },
-      commit_line_2 = { 'message' },
+      fields = { 'hash', 'timestamp', 'author', 'branch_name', 'tag' },
     },
   },
+  ---@type integer?
+  buf = nil,
   ---@type I.Row[]
   graph = {},
 }
 
 ---@type table<string, I.HighlightGroup>
 local ITEM_HGS = {
-  h = { name = 'GitGraphHash', fg = '#b16286' },
-  ts = { name = 'GitGraphTimestamp', fg = '#98971a' },
+  hash = { name = 'GitGraphHash', fg = '#b16286' },
+  timestamp = { name = 'GitGraphTimestamp', fg = '#98971a' },
   author = { name = 'GitGraphAuthor', fg = '#458588' },
   branch_name = { name = 'GitGraphBranchName', fg = '#d5651c' },
   tag = { name = 'GitGraphBranchTag', fg = '#d79921' },
-  msg = { name = 'GitGraphBranchMsg', fg = '#339921' },
+  message = { name = 'GitGraphBranchMsg', fg = '#339921' },
 }
 
 ---@type I.HighlightGroup[]
@@ -48,7 +61,9 @@ local BRANCH_HGS = {
 
 local NUM_BRANCH_COLORS = #BRANCH_HGS
 
-function M.setup()
+function M.setup(config)
+  M.config = vim.tbl_deep_extend('force', M.config, config)
+
   local function set_hl(name, highlight)
     local existing_hg = vim.api.nvim_get_hl(0, { name = name })
     if #existing_hg == 0 then
@@ -831,6 +846,7 @@ local function _gitgraph(data, opt)
   ---@param options I.DrawOptions
   ---@return string[]
   ---@return I.Highlight[]
+  ---@return integer?
   local function graph_to_lines(options, alpha_graph, proper_graph)
     ---@type integer?
     local head_loc = 1
@@ -1018,8 +1034,8 @@ local function _gitgraph(data, opt)
       if options.mode ~= 'test' then
         local c = alpha_row.commit
         if c then
-          local h = c.hash:sub(1, 7)
-          local ts = c.author_date
+          local hash = c.hash:sub(1, 7)
+          local timestamp = c.author_date
           local author = c.author_name
 
           local branch_names = #c.branch_names > 0 and ('(%s)'):format(table.concat(c.branch_names, ' | ')) or nil
@@ -1036,11 +1052,11 @@ local function _gitgraph(data, opt)
           local tags = #c.tags > 0 and ('(%s)'):format(table.concat(c.tags, ' | ')) or nil
 
           local items = {
-            { name = 'h', value = h },
-            { name = 'ts', value = ts },
-            { name = 'author', value = author },
-            { name = 'branch_name', value = branch_names },
-            { name = 'tag', value = tags },
+            ['hash'] = hash,
+            ['timestamp'] = timestamp,
+            ['author'] = author,
+            ['branch_name'] = branch_names,
+            ['tag'] = tags,
           }
 
           local pad_size = padding - #alpha_row.cells
@@ -1055,15 +1071,16 @@ local function _gitgraph(data, opt)
           end
 
           --- add hihlights for hash, timestamp, branch_names and tags
-          for _, item in ipairs(items) do
-            if item.value then
+          for _, name in ipairs(M.config.format.fields) do
+            local value = items[name]
+            if value then
               highlights[#highlights + 1] = {
-                hg = ITEM_HGS[item.name].name,
+                hg = ITEM_HGS[name].name,
                 row = idx,
                 start = offset,
-                stop = offset + #item.value,
+                stop = offset + #value,
               }
-              add_to_row(item.value)
+              add_to_row(value)
             end
           end
         else
@@ -1084,7 +1101,7 @@ local function _gitgraph(data, opt)
               start = offset,
               stop = offset + #c.msg,
               row = idx,
-              hg = ITEM_HGS['msg'].name,
+              hg = ITEM_HGS['message'].name,
             }
 
             add_to_row(c.msg)
@@ -1435,7 +1452,7 @@ function M.gitgraph(options, args)
   local revision_range = args.revision_range or ''
 
   local format = 'format:%s%x00(%D)%x00%ad%x00%an%x00%H%x00%P'
-  local date_format = 'format:%H:%M:%S %d-%m-%Y'
+  local date_format = 'format:' .. M.config.format.timestamp -- 'format:%H:%M:%S %d-%m-%Y'
   local all = args.all and '--all' or ''
   local max_count = args.max_count and ('--max-count=%d'):format(args.max_count) or ''
   local skip = args.skip and ('--skip=%d'):format(args.skip) or ''
@@ -1444,7 +1461,7 @@ function M.gitgraph(options, args)
   local handle = io.popen(git_cmd)
   if not handle then
     print 'no handle?'
-    return {}, {}
+    return {}, {}, 1
   end
 
   ---@type string
