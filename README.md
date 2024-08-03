@@ -1,8 +1,14 @@
 # gitgraph.nvim
 
-> NOTE: this project is still very WIP and there is no help documentation other that this README.md for now.
-
 Git Graph plugin for neovim.
+
+> NOTE: this project is still very WIP and there is no help documentation aside from this README.md.
+
+# Screenshots
+
+![image](https://github.com/user-attachments/assets/cecc231a-07ac-4557-bbca-9da438b4379b)
+
+<img width="572" alt="image" src="https://github.com/user-attachments/assets/c38aa5a5-274c-41b7-b552-7464f1331708">
 
 # Goals
 
@@ -18,7 +24,6 @@ Git Graph plugin for neovim.
 # Usage
 
 > Note that this is still very early days and things may rapidly change in the beginning
-
 
 ```lua
   {
@@ -48,11 +53,11 @@ Git Graph plugin for neovim.
 
 When in the git graph buffer you can open diffview on the commit under the cursor with `Enter`.
 
-... morekeymaps to come
+... moreke ymaps to come ... 
 
-# Highlights 
+# Highlights Groups
 
-## information
+## commit information
 
   - 'GitGraphHash'
   - 'GitGraphTimestamp'
@@ -61,7 +66,7 @@ When in the git graph buffer you can open diffview on the commit under the curso
   - 'GitGraphBranchTag'
   - 'GitGraphBranchMsg'
 
-## branch highlights
+## branch colors
 
   - 'GitGraphBranch1' 
   - 'GitGraphBranch2' 
