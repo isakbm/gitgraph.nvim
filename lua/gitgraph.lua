@@ -7,6 +7,28 @@
 ---@class I.GGSymbols
 ---@field merge_commit string
 ---@field commit string
+---@field merge_commit_end string
+---@field commit_end string
+---@field GVER string
+---@field GHOR string
+---@field GCLD string
+---@field GCRD string
+---@field GCLU string
+---@field GCRU string
+---@field GLRU string
+---@field GLRD string
+---@field GLUD string
+---@field GRUD string
+---@field GFORKU string
+---@field GFORKD string
+---@field GRUDCD string
+---@field GRUDCU string
+---@field GLUDCD string
+---@field GLUDCU string
+---@field GLRDCL string
+---@field GLRDCR string
+---@field GLRUCL string
+---@field GLRUCR string
 
 ---@alias I.GGVarName "hash" | "timestamp" | "author" | "branch_name" | "tag" | "message"
 
@@ -33,6 +55,30 @@ local M = {
     symbols = {
       merge_commit = 'M',
       commit = '*',
+      merge_commit_end = 'M',
+      commit_end = '*',
+
+      -- Advanced symbols
+      GVER = '│',
+      GHOR = '─',
+      GCLD = '╮',
+      GCRD = '╭',
+      GCLU = '╯',
+      GCRU = '╰',
+      GLRU = '┴',
+      GLRD = '┬',
+      GLUD = '┤',
+      GRUD = '├',
+      GFORKU = '┼',
+      GFORKD = '┼',
+      GRUDCD = '├',
+      GRUDCU = '├',
+      GLUDCD = '┤',
+      GLUDCU = '┤',
+      GLRDCL = '┬',
+      GLRDCR = '┬',
+      GLRUCL = '┴',
+      GLRUCR = '┴',
     },
     hooks = {
       on_select_commit = function(commit)
@@ -146,29 +192,29 @@ end
 ---@return I.Highlight[]
 local function _gitgraph(data, opt)
   -- git graph symbols
-  local GVER = '│' -- '|'
-  local GHOR = '─' -- '-'
-  local GCLD = '╮' -- '┐'
-  local GCRD = '╭' -- '┌'
-  local GCLU = '╯' -- '┘'
-  local GCRU = '╰' -- '└'
-  local GLRU = '┴'
-  local GLRD = '┬'
-  local GLUD = '┤'
-  local GRUD = '├'
+  local GVER = M.config.symbols.GVER -- '│'
+  local GHOR = M.config.symbols.GHOR -- '─'
+  local GCLD = M.config.symbols.GCLD -- '╮'
+  local GCRD = M.config.symbols.GCRD -- '╭'
+  local GCLU = M.config.symbols.GCLU -- '╯'
+  local GCRU = M.config.symbols.GCRU -- '╰'
+  local GLRU = M.config.symbols.GLRU -- '┴'
+  local GLRD = M.config.symbols.GLRD -- '┬'
+  local GLUD = M.config.symbols.GLUD -- '┤'
+  local GRUD = M.config.symbols.GRUD -- '├'
 
-  local GFORKU = opt.pretty and '⓵' or '┼'
-  local GFORKD = opt.pretty and '⓴' or '┼'
+  local GFORKU = opt.pretty and '⓵' or M.config.symbols.GFORKU -- '┼'
+  local GFORKD = opt.pretty and '⓴' or M.config.symbols.GFORKD -- '┼'
 
-  local GRUDCD = opt.pretty and '⓶' or '├'
-  local GRUDCU = opt.pretty and '⓸' or '├'
-  local GLUDCD = opt.pretty and '⓷' or '┤'
-  local GLUDCU = opt.pretty and '⓹' or '┤'
+  local GRUDCD = opt.pretty and '⓶' or M.config.symbols.GRUDCD -- '├'
+  local GRUDCU = opt.pretty and '⓸' or M.config.symbols.GRUDCU -- '├'
+  local GLUDCD = opt.pretty and '⓷' or M.config.symbols.GLUDCD -- '┤'
+  local GLUDCU = opt.pretty and '⓹' or M.config.symbols.GLUDCU -- '┤'
 
-  local GLRDCL = opt.pretty and 'ⓢ' or '┬'
-  local GLRDCR = opt.pretty and 'ⓣ' or '┬'
-  local GLRUCL = opt.pretty and 'ⓥ' or '┴'
-  local GLRUCR = opt.pretty and 'ⓤ' or '┴'
+  local GLRDCL = opt.pretty and 'ⓢ' or M.config.symbols.GLRDCL -- '┬'
+  local GLRDCR = opt.pretty and 'ⓣ' or M.config.symbols.GLRDCR -- '┬'
+  local GLRUCL = opt.pretty and 'ⓥ' or M.config.symbols.GLRUCL -- '┴'
+  local GLRUCR = opt.pretty and 'ⓤ' or M.config.symbols.GLRUCR -- '┴'
 
   -- local GRCM = opt.pretty and 'ⓚ' or '*'
   -- local GMCM = opt.pretty and '⓮' or '●'
@@ -177,8 +223,8 @@ local function _gitgraph(data, opt)
 
   local GRCM = M.config.symbols.commit
   local GMCM = M.config.symbols.merge_commit
-  local GRCME = M.config.symbols.commit
-  local GMCME = M.config.symbols.merge_commit
+  local GRCME = M.config.symbols.commit_end
+  local GMCME = M.config.symbols.merge_commit_end
 
   -- ORGANIZATION
   -- TODO: look at https://github.com/S1M0N38/my-awesome-plugin.nvim to start making this into a plugin :)
