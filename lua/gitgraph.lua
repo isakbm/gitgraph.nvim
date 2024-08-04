@@ -14,9 +14,14 @@
 ---@field timestamp? string
 ---@field fields? I.GGVarName[]
 
+---@class I.Hooks
+---@field on_select_commit fun(commit: I.Commit)
+---@field on_select_range_commit fun(from: I.Commit, to: I.Commit)
+
 ---@class I.GGConfig
 ---@field symbols? I.GGSymbols
 ---@field format? I.GGFormat
+---@field hooks? I.Hooks
 
 ---@class I.HighlightGroup
 ---@field name string
@@ -29,6 +34,14 @@ local M = {
       merge_commit = 'M',
       commit = '*',
     },
+    hooks = {
+      on_select_commit = function(commit)
+        print('selected commit:', commit.hash)
+      end,
+      on_select_range_commit = function(from, to)
+        print('selected range:', from.hash, to.hash)
+      end,
+    },
     format = {
       timestamp = '%H:%M:%S %d-%m-%Y',
       fields = { 'hash', 'timestamp', 'author', 'branch_name', 'tag' },
@@ -39,6 +52,9 @@ local M = {
   ---@type I.Row[]
   graph = {},
 }
+
+-- Follow conventions from mini.nvim
+local Helper = {}
 
 ---@type table<string, I.HighlightGroup>
 local ITEM_HGS = {
@@ -2008,7 +2024,6 @@ function M.draw(options, args)
   do
     if not M.buf or not vim.api.nvim_buf_is_valid(M.buf) then
       M.buf = vim.api.nvim_create_buf(false, true)
-      vim.api.nvim_set_option_value('filetype', 'gitgraph', { buf = M.buf })
     end
   end
 
@@ -2041,29 +2056,62 @@ function M.draw(options, args)
     end
   end
 
-  -- buffer options
   do
     local cursor_line = head_loc
     vim.api.nvim_win_set_cursor(0, { cursor_line, 0 })
-    -- FIXME:
-    vim.api.nvim_set_option_value('modifiable', false, { buf = buf })
   end
 
-  -- gitdiff integration
-  -- TODO:
+  Helper.apply_buffer_options(buf)
+  Helper.apply_buffer_mappings(buf)
+end
+
+Helper.apply_buffer_options = function(buf_id)
+  vim.api.nvim_buf_set_option(buf_id, 'modifiable', false)
+  vim.cmd('noautocmd silent! set filetype=gitgraph')
+  vim.api.nvim_buf_set_name(buf_id, 'GitGraph')
+
+  local options = {
+    'foldcolumn=0',
+    'foldlevel=999',
+    'norelativenumber',
+    'nospell',
+    'noswapfile',
+  }
+  -- Vim's `setlocal` is currently more robust compared to `opt_local`
+  vim.cmd(('silent! noautocmd setlocal %s'):format(table.concat(options, ' ')))
+end
+
+Helper.apply_buffer_mappings = function(buf_id)
   vim.keymap.set('n', '<CR>', function()
-    local pos = vim.api.nvim_win_get_cursor(0)
-    local row = pos[1]
-
-    -- trick to map both the commit row and the message row to the provided commit
-    row = 2 * (math.floor((row - 1) / 2)) + 1 -- 1 1 3 3 5 5 7 7
-
-    local commit = M.graph[row].commit
+    local row = vim.api.nvim_win_get_cursor(0)[1]
+    local commit = Helper.get_commit_from_row(row)
     if commit then
-      print('will open diff of', commit.hash)
-      vim.cmd(':DiffviewOpen ' .. commit.hash .. '^!')
+      M.config.hooks.on_select_commit(commit)
     end
-  end, { buffer = buf, desc = 'inspect commit under cursor' })
+  end, { buffer = buf_id, desc = 'select commit under cursor' })
+
+  vim.keymap.set('v', '<CR>', function()
+    -- make sure visual selection is done
+    vim.cmd('noau normal! "vy"')
+
+    local start_row = vim.fn.getpos("'<")[2]
+    local end_row = vim.fn.getpos("'>")[2]
+
+    local to_commit = Helper.get_commit_from_row(start_row)
+    local from_commit = Helper.get_commit_from_row(end_row)
+
+    if from_commit and to_commit then
+      M.config.hooks.on_select_range_commit(from_commit, to_commit)
+    end
+
+  end, { buffer = buf_id, desc = 'select range of commit' })
+end
+
+Helper.get_commit_from_row = function(r)
+  -- trick to map both the commit row and the message row to the provided commit
+  local row = 2 * (math.floor((r - 1) / 2)) + 1 -- 1 1 3 3 5 5 7 7
+  local commit = M.graph[row].commit
+  return commit
 end
 
 return M
