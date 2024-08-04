@@ -86,6 +86,39 @@ or for **multiple** commit if on `visual mode`
   },
 ```
 
+## Use custom symbols to drawl graph
+For example, use **kitty** drawl branch symbols [more detail](https://github.com/kovidgoyal/kitty/pull/7681)
+```lua
+  symbols = {
+    merge_commit = '',
+    commit = '',
+    merge_commit_end = '',
+    commit_end = '',
+
+    -- Advanced symbols
+    GVER = '',
+    GHOR = '',
+    GCLD = '',
+    GCRD = '╭',
+    GCLU = '',
+    GCRU = '',
+    GLRU = '',
+    GLRD = '',
+    GLUD = '',
+    GRUD = '',
+    GFORKU = '',
+    GFORKD = '',
+    GRUDCD = '',
+    GRUDCU = '',
+    GLUDCD = '',
+    GLUDCU = '',
+    GLRDCL = '',
+    GLRDCR = '',
+    GLRUCL = '',
+    GLRUCR = '',
+  },
+```
+
 # Keymaps
 
 ... more keymaps to come ... 
