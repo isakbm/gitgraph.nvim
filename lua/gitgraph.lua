@@ -15,8 +15,8 @@
 ---@field fields? I.GGVarName[]
 
 ---@class I.Hooks
----@field on_select_commit fun(commit: I.Commit): void
----@field on_select_range_commit fun(from: I.Commit, to: I.Commit): void
+---@field on_select_commit fun(commit: I.Commit)
+---@field on_select_range_commit fun(from: I.Commit, to: I.Commit)
 
 ---@class I.GGConfig
 ---@field symbols? I.GGSymbols
