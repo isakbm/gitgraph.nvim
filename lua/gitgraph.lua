@@ -2070,6 +2070,16 @@ Helper.apply_buffer_options = function(buf_id)
   vim.api.nvim_buf_set_option(buf_id, 'modifiable', false)
   vim.cmd('noautocmd silent! set filetype=gitgraph')
   vim.api.nvim_buf_set_name(buf_id, 'GitGraph')
+
+  local options = {
+    'foldcolumn=0',
+    'foldlevel=999',
+    'norelativenumber',
+    'nospell',
+    'noswapfile',
+  }
+  -- Vim's `setlocal` is currently more robust compared to `opt_local`
+  vim.cmd(('silent! noautocmd setlocal %s'):format(table.concat(options, ' ')))
 end
 
 Helper.apply_buffer_mappings = function(buf_id)
