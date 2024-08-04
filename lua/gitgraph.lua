@@ -2024,7 +2024,6 @@ function M.draw(options, args)
   do
     if not M.buf or not vim.api.nvim_buf_is_valid(M.buf) then
       M.buf = vim.api.nvim_create_buf(false, true)
-      vim.api.nvim_set_option_value('filetype', 'gitgraph', { buf = M.buf })
     end
   end
 
