@@ -2008,7 +2008,7 @@ function M.draw(options, args)
   do
     if not M.buf or not vim.api.nvim_buf_is_valid(M.buf) then
       M.buf = vim.api.nvim_create_buf(false, true)
-      vim.api.nvim_buf_set_option(M.buf, 'filetype', 'gitgraph.nvim')
+      vim.api.nvim_set_option_value('filetype', 'gitgraph.nvim', { buf = M.buf })
     end
   end
 
@@ -2018,7 +2018,7 @@ function M.draw(options, args)
   vim.api.nvim_win_set_buf(0, buf)
 
   -- make modifiable
-  vim.api.nvim_buf_set_option(buf, 'modifiable', true)
+  vim.api.nvim_set_option_value('modifiable', true, { buf = buf })
 
   -- clear
   do
@@ -2046,7 +2046,7 @@ function M.draw(options, args)
     local cursor_line = head_loc
     vim.api.nvim_win_set_cursor(0, { cursor_line, 0 })
     -- FIXME:
-    vim.api.nvim_buf_set_option(buf, 'modifiable', false)
+    vim.api.nvim_set_option_value('modifiable', false, { buf = buf })
   end
 
   -- gitdiff integration
