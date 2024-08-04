@@ -16,6 +16,7 @@
 
 ---@class I.Hooks
 ---@field on_select_commit fun(commit: I.Commit): void
+---@field on_select_range_commit fun(from: I.Commit, to: I.Commit): void
 
 ---@class I.GGConfig
 ---@field symbols? I.GGSymbols
@@ -36,6 +37,9 @@ local M = {
     hooks = {
       on_select_commit = function(commit)
         print('selected commit:', commit.hash)
+      end,
+      on_select_range_commit = function(from, to)
+        print('selected range:', from.hash, to.hash)
       end,
     },
     format = {
@@ -2076,6 +2080,22 @@ Helper.apply_buffer_mappings = function(buf_id)
       M.config.hooks.on_select_commit(commit)
     end
   end, { buffer = buf_id, desc = 'select commit under cursor' })
+
+  vim.keymap.set('v', '<CR>', function()
+    -- make sure visual selection is done
+    vim.cmd('noau normal! "vy"')
+
+    local start_row = vim.fn.getpos("'<")[2]
+    local end_row = vim.fn.getpos("'>")[2]
+
+    local to_commit = Helper.get_commit_from_row(start_row)
+    local from_commit = Helper.get_commit_from_row(end_row)
+
+    if from_commit and to_commit then
+      M.config.hooks.on_select_range_commit(from_commit, to_commit)
+    end
+
+  end, { buffer = buf_id, desc = 'select range of commit' })
 end
 
 Helper.get_commit_from_row = function(r)
