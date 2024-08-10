@@ -1789,7 +1789,7 @@ function M.draw(options, args)
     local current_dir = vim.fn.getcwd()
 
     while current_dir ~= "/" do
-      if vim.fn.isdirectory(current_dir .. "/.git") == 1 or vim.fn.filereadable(current_dir .. "/.git") == 1 then
+      if vim.fn.isdirectory(current_dir .. "/.git") == 1 then
         return true
       end
       current_dir = vim.fn.fnamemodify(current_dir, ":h")
