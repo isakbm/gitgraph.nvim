@@ -1377,16 +1377,17 @@ local function _gitgraph(data, opt)
         stopped[#stopped + 1] = j
       end
     end
+
     -- now lets get the intervals between the stopped connetors
     -- and other connectors of the same commit hash
     local intervals = {}
-    local curr = 1
     for _, j in ipairs(stopped) do
+      local curr = 1
       for k = curr, j do
         local cell_k, cell_j = row.cells[k], row.cells[j]
         local rkc, rjc = (not cell_k.connector and cell_k.commit), (not cell_j.connector and cell_j.commit)
         if (rkc and rjc) and (rkc.hash == rjc.hash) then
-          if j > k then
+          if k < j then
             intervals[#intervals + 1] = { start = k, stop = j }
           end
           curr = j
@@ -1406,7 +1407,7 @@ local function _gitgraph(data, opt)
       local high = 1
       for j = 1, #row.cells do
         local c = row.cells[j]
-        if not c.connector and c.commit then
+        if c.emphasis then
           if j > high then
             high = j
           end
@@ -1737,9 +1738,9 @@ function M.test()
 
   local subset = {}
   for _, scenario in ipairs(scenarios) do
-    if scenario.name == 'letieu' then
-      subset[#subset + 1] = scenario
-    end
+    -- if scenario.name == 'strange 2' then
+    subset[#subset + 1] = scenario
+    -- end
   end
 
   for _, scenario in ipairs(subset) do

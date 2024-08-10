@@ -4,7 +4,7 @@ local log = {}
 local function arg_to_str(...)
   local args = { ... }
   for i = 1, #args do
-    args[i] = tostring(args[i])
+    args[i] = vim.inspect(args[i])
   end
   local str = table.concat(args, ' ')
   return str
