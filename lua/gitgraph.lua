@@ -978,6 +978,11 @@ local function _gitgraph(data, opt)
     ---@return string
     local function commit_cell_symb(cell)
       assert(cell.is_commit)
+
+      if options.mode == 'debug' then
+        return cell.commit.msg
+      end
+
       if #cell.commit.parents > 1 then
         -- merge commit
         return #cell.commit.children == 0 and GMCME or GMCM
@@ -1197,7 +1202,16 @@ local function _gitgraph(data, opt)
               local p = commits[h]
               parents = parents .. (p and p.msg or '?')
             end
-            add_to_row(c.msg .. ' -> ' .. parents)
+
+            local children = ''
+            for _, h in ipairs(graph[idx].commit.children) do
+              local p = commits[h]
+              children = children .. (p and p.msg or '?')
+            end
+            if #children == 0 then
+              children = '_'
+            end
+            add_to_row(children .. ' -> ' .. c.msg .. ' -> ' .. parents)
           end
         else
           local c = alpha_graph[idx - 1].commit
@@ -1703,7 +1717,6 @@ end
 function M.test()
   -- for the random scenario builder
   local seed = os.time()
-  print('seeding:', seed)
   math.randomseed(seed)
 
   local res = {}
