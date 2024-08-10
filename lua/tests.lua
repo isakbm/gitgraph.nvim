@@ -2,6 +2,7 @@
 ---@field name string
 ---@field commits string[]
 ---@field expect string[]
+---@field ignore? boolean
 
 ---@type GG.Test[]
 return {
@@ -375,5 +376,20 @@ return {
       'a     A A     ',
       'A             ',
     },
+  },
+  {
+    name = 'letieu',
+    commits = {
+      'H CG',
+      'G C',
+      'F BE',
+      'E BD',
+      'D BA',
+      'C B',
+      'B A',
+      'A',
+    },
+    ignore = true,
+    expect = {},
   },
 }

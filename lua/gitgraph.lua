@@ -1739,7 +1739,7 @@ function M.test()
     end
 
     for i, line in ipairs(alpha_graph) do
-      if line ~= scenario.expect[i] then
+      if scenario.ignore ~= true and line ~= scenario.expect[i] then
         report_failure('------ FAILURE ------')
         report_failure('failure in scenario ' .. scenario.name .. ' at line ' .. tostring(i))
         report_failure('expected:')
