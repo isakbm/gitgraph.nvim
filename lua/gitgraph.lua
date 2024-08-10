@@ -192,39 +192,57 @@ end
 ---@return I.Highlight[]
 local function _gitgraph(data, opt)
   -- git graph symbols
-  local GVER = M.config.symbols.GVER -- '│'
-  local GHOR = M.config.symbols.GHOR -- '─'
-  local GCLD = M.config.symbols.GCLD -- '╮'
-  local GCRD = M.config.symbols.GCRD -- '╭'
-  local GCLU = M.config.symbols.GCLU -- '╯'
-  local GCRU = M.config.symbols.GCRU -- '╰'
-  local GLRU = M.config.symbols.GLRU -- '┴'
-  local GLRD = M.config.symbols.GLRD -- '┬'
-  local GLUD = M.config.symbols.GLUD -- '┤'
-  local GRUD = M.config.symbols.GRUD -- '├'
+  -- NOTE: We emmy type these to string, we expect them all
+  --       to be set. The only reason the config types are
+  --       string? (i.e potentially nil) is to allow a user to
+  --       pass in only a subset of symbols without being bombarded
+  --       with warnings of missing options.
+  local GVER = M.config.symbols.GVER ---@type string -- '│'
+  local GHOR = M.config.symbols.GHOR ---@type string -- '─'
+  local GCLD = M.config.symbols.GCLD ---@type string -- '╮'
+  local GCRD = M.config.symbols.GCRD ---@type string -- '╭'
+  local GCLU = M.config.symbols.GCLU ---@type string -- '╯'
+  local GCRU = M.config.symbols.GCRU ---@type string -- '╰'
+  local GLRU = M.config.symbols.GLRU ---@type string -- '┴'
+  local GLRD = M.config.symbols.GLRD ---@type string -- '┬'
+  local GLUD = M.config.symbols.GLUD ---@type string -- '┤'
+  local GRUD = M.config.symbols.GRUD ---@type string -- '├'
 
-  local GFORKU = opt.pretty and '⓵' or M.config.symbols.GFORKU -- '┼'
-  local GFORKD = opt.pretty and '⓴' or M.config.symbols.GFORKD -- '┼'
+  local GFORKU = M.config.symbols.GFORKU ---@type string -- '┼'
+  local GFORKD = M.config.symbols.GFORKD ---@type string -- '┼'
 
-  local GRUDCD = opt.pretty and '⓶' or M.config.symbols.GRUDCD -- '├'
-  local GRUDCU = opt.pretty and '⓸' or M.config.symbols.GRUDCU -- '├'
-  local GLUDCD = opt.pretty and '⓷' or M.config.symbols.GLUDCD -- '┤'
-  local GLUDCU = opt.pretty and '⓹' or M.config.symbols.GLUDCU -- '┤'
+  local GRUDCD = M.config.symbols.GRUDCD ---@type string -- '├'
+  local GRUDCU = M.config.symbols.GRUDCU ---@type string -- '├'
+  local GLUDCD = M.config.symbols.GLUDCD ---@type string -- '┤'
+  local GLUDCU = M.config.symbols.GLUDCU ---@type string -- '┤'
 
-  local GLRDCL = opt.pretty and 'ⓢ' or M.config.symbols.GLRDCL -- '┬'
-  local GLRDCR = opt.pretty and 'ⓣ' or M.config.symbols.GLRDCR -- '┬'
-  local GLRUCL = opt.pretty and 'ⓥ' or M.config.symbols.GLRUCL -- '┴'
-  local GLRUCR = opt.pretty and 'ⓤ' or M.config.symbols.GLRUCR -- '┴'
+  local GLRDCL = M.config.symbols.GLRDCL ---@type string -- '┬'
+  local GLRDCR = M.config.symbols.GLRDCR ---@type string -- '┬'
+  local GLRUCL = M.config.symbols.GLRUCL ---@type string -- '┴'
+  local GLRUCR = M.config.symbols.GLRUCR ---@type string -- '┴'
 
-  -- local GRCM = opt.pretty and 'ⓚ' or '*'
-  -- local GMCM = opt.pretty and '⓮' or '●'
-  -- local GRCME = opt.pretty and 'ⓛ' or '*'
-  -- local GMCME = opt.pretty and '⓯' or '●'
+  local GRCM = M.config.symbols.commit ---@type string
+  local GMCM = M.config.symbols.merge_commit ---@type string
+  local GRCME = M.config.symbols.commit_end ---@type string
+  local GMCME = M.config.symbols.merge_commit_end ---@type string
 
-  local GRCM = M.config.symbols.commit
-  local GMCM = M.config.symbols.merge_commit
-  local GRCME = M.config.symbols.commit_end
-  local GMCME = M.config.symbols.merge_commit_end
+  GFORKU = opt.pretty and '⓵' or GFORKU -- '┼'
+  GFORKD = opt.pretty and '⓴' or GFORKD -- '┼'
+
+  GRUDCD = opt.pretty and '⓶' or GRUDCD -- '├'
+  GRUDCU = opt.pretty and '⓸' or GRUDCU -- '├'
+  GLUDCD = opt.pretty and '⓷' or GLUDCD -- '┤'
+  GLUDCU = opt.pretty and '⓹' or GLUDCU -- '┤'
+
+  GLRDCL = opt.pretty and 'ⓢ' or GLRDCL -- '┬'
+  GLRDCR = opt.pretty and 'ⓣ' or GLRDCR -- '┬'
+  GLRUCL = opt.pretty and 'ⓥ' or GLRUCL -- '┴'
+  GLRUCR = opt.pretty and 'ⓤ' or GLRUCR -- '┴'
+
+  GRCM = opt.pretty and 'ⓚ' or GRCM
+  GMCM = opt.pretty and '⓮' or GMCM
+  GRCME = opt.pretty and 'ⓛ' or GRCME
+  GMCME = opt.pretty and '⓯' or GMCME
 
   -- ORGANIZATION
   -- TODO: look at https://github.com/S1M0N38/my-awesome-plugin.nvim to start making this into a plugin :)
@@ -323,6 +341,7 @@ local function _gitgraph(data, opt)
         -- create a virtual parent, it is not added to the list of commit hashes
         commits[h] = {
           hash = h,
+          author_name = 'virtual',
           is_void = false,
           msg = 'virtual parent',
           explored = false,
