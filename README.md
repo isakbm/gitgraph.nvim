@@ -20,6 +20,8 @@ Git Graph plugin for neovim.
 - compatible with sindrets.diffview
 - easily configurable date formats
 - easily configurable highlight groups
+- performant scrolling
+- performant load times for large repos (WIP)
 
 # Usage
 
@@ -63,7 +65,8 @@ Git Graph plugin for neovim.
 ## View commit with [Diffview.nvim](https://github.com/sindrets/diffview.nvim)
 
 When in the git graph buffer you can open `Diffview` on the commit under the cursor with `Enter`.
-or for **multiple** commit if on `visual mode`
+
+When in visual mode you get the `Diffview` for the selected range.
 ```lua
   {
     'isakbm/gitgraph.nvim',
@@ -86,8 +89,8 @@ or for **multiple** commit if on `visual mode`
   },
 ```
 
-## Use custom symbols to drawl graph
-For example, use **kitty** drawl branch symbols [more detail](https://github.com/kovidgoyal/kitty/pull/7681)
+## Use custom symbols
+For example, use **kitty** branch symbols [more detail](https://github.com/kovidgoyal/kitty/pull/7681)
 ```lua
   symbols = {
     merge_commit = '',
