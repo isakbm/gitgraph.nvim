@@ -1784,49 +1784,68 @@ end
 ---@param options I.DrawOptions
 ---@param args I.GitLogArgs
 function M.draw(options, args)
-  -- reuse or create buffer
-  do
-    if not M.buf or not vim.api.nvim_buf_is_valid(M.buf) then
-      M.buf = vim.api.nvim_create_buf(false, true)
+  -- Checks if we're in a git repo before creating a buffer
+  local function is_in_git_repo()
+    local current_dir = vim.fn.getcwd()
+
+    while current_dir ~= "/" do
+      if vim.fn.isdirectory(current_dir .. "/.git") == 1 or vim.fn.filereadable(current_dir .. "/.git") == 1 then
+        return true
+      end
+      current_dir = vim.fn.fnamemodify(current_dir, ":h")
     end
+
+    return false
   end
 
-  -- set active buffer to this one
-  local buf = M.buf
-  assert(buf)
-  vim.api.nvim_win_set_buf(0, buf)
-
-  -- make modifiable
-  vim.api.nvim_set_option_value('modifiable', true, { buf = buf })
-
-  -- clear
-  do
-    local prior_buf_size = vim.api.nvim_buf_line_count(buf)
-    vim.api.nvim_buf_set_lines(buf, 0, prior_buf_size, false, {})
-  end
-
-  -- extract graph data
-  local lines, highlights, head_loc = M.gitgraph(options, args)
-
-  -- put graph data in buffer
-  do
-    -- text
-    vim.api.nvim_buf_set_lines(buf, 0, #lines, false, lines)
-
-    -- highlights
-    for _, hl in ipairs(highlights) do
-      local offset = 1
-      vim.api.nvim_buf_add_highlight(buf, 0, hl.hg, hl.row - 1, hl.start - 1 + offset, hl.stop + offset)
+  if not is_in_git_repo() then
+    vim.notify("You are not in a Git repository", vim.log.levels.ERROR)
+    return
+  else
+    -- reuse or create buffer
+    do
+      if not M.buf or not vim.api.nvim_buf_is_valid(M.buf) then
+        M.buf = vim.api.nvim_create_buf(false, true)
+      end
     end
-  end
 
-  do
-    local cursor_line = head_loc
-    vim.api.nvim_win_set_cursor(0, { cursor_line, 0 })
-  end
+    -- set active buffer to this one
+    local buf = M.buf
+    assert(buf)
+    vim.api.nvim_win_set_buf(0, buf)
 
-  Helper.apply_buffer_options(buf)
-  Helper.apply_buffer_mappings(buf)
+    -- make modifiable
+    vim.api.nvim_set_option_value('modifiable', true, { buf = buf })
+
+    -- clear
+    do
+      local prior_buf_size = vim.api.nvim_buf_line_count(buf)
+      vim.api.nvim_buf_set_lines(buf, 0, prior_buf_size, false, {})
+    end
+
+    -- extract graph data
+    local lines, highlights, head_loc = M.gitgraph(options, args)
+
+    -- put graph data in buffer
+    do
+      -- text
+      vim.api.nvim_buf_set_lines(buf, 0, #lines, false, lines)
+
+      -- highlights
+      for _, hl in ipairs(highlights) do
+        local offset = 1
+        vim.api.nvim_buf_add_highlight(buf, 0, hl.hg, hl.row - 1, hl.start - 1 + offset, hl.stop + offset)
+      end
+    end
+
+    do
+      local cursor_line = head_loc
+      vim.api.nvim_win_set_cursor(0, { cursor_line, 0 })
+    end
+
+    Helper.apply_buffer_options(buf)
+    Helper.apply_buffer_mappings(buf)
+  end
 end
 
 Helper.apply_buffer_options = function(buf_id)
