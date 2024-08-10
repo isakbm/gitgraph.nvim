@@ -5,30 +5,30 @@
 ---@field stop integer
 
 ---@class I.GGSymbols
----@field merge_commit string
----@field commit string
----@field merge_commit_end string
----@field commit_end string
----@field GVER string
----@field GHOR string
----@field GCLD string
----@field GCRD string
----@field GCLU string
----@field GCRU string
----@field GLRU string
----@field GLRD string
----@field GLUD string
----@field GRUD string
----@field GFORKU string
----@field GFORKD string
----@field GRUDCD string
----@field GRUDCU string
----@field GLUDCD string
----@field GLUDCU string
----@field GLRDCL string
----@field GLRDCR string
----@field GLRUCL string
----@field GLRUCR string
+---@field merge_commit? string
+---@field commit? string
+---@field merge_commit_end? string
+---@field commit_end? string
+---@field GVER? string
+---@field GHOR? string
+---@field GCLD? string
+---@field GCRD? string
+---@field GCLU? string
+---@field GCRU? string
+---@field GLRU? string
+---@field GLRD? string
+---@field GLUD? string
+---@field GRUD? string
+---@field GFORKU? string
+---@field GFORKD? string
+---@field GRUDCD? string
+---@field GRUDCU? string
+---@field GLUDCD? string
+---@field GLUDCU? string
+---@field GLRDCL? string
+---@field GLRDCR? string
+---@field GLRUCL? string
+---@field GLRUCR? string
 
 ---@alias I.GGVarName "hash" | "timestamp" | "author" | "branch_name" | "tag" | "message"
 
