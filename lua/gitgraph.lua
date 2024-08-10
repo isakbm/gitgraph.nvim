@@ -1788,18 +1788,18 @@ function M.draw(options, args)
   local function is_in_git_repo()
     local current_dir = vim.fn.getcwd()
 
-    while current_dir ~= "/" do
-      if vim.fn.isdirectory(current_dir .. "/.git") == 1 then
+    while current_dir ~= '/' do
+      if vim.fn.isdirectory(current_dir .. '/.git') == 1 then
         return true
       end
-      current_dir = vim.fn.fnamemodify(current_dir, ":h")
+      current_dir = vim.fn.fnamemodify(current_dir, ':h')
     end
 
     return false
   end
 
   if not is_in_git_repo() then
-    vim.notify("You are not in a Git repository", vim.log.levels.ERROR)
+    vim.notify('You are not in a Git repository', vim.log.levels.ERROR)
     return
   else
     -- reuse or create buffer
