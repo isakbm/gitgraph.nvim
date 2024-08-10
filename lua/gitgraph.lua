@@ -647,7 +647,7 @@ local function _gitgraph(data, opt)
         graph[row_idx] = { i = row_idx, cells = rowc, commit = c }
       end
 
-      do
+      if i < #sorted_commits then
         -- connector row (reservation row)
         --
         -- first we propagate
@@ -945,10 +945,10 @@ local function _gitgraph(data, opt)
         'V',
         'W',
       }
-      local ctr = 1
+      local ctr = #alphabet - 1
       return function()
         local char = alphabet[(ctr % #alphabet) + 1]
-        ctr = ctr + 1
+        ctr = ctr - 1
         return char
       end
     end
@@ -1037,6 +1037,26 @@ local function _gitgraph(data, opt)
 
     ---@param row I.Row
     ---@return string
+    local function row_to_test(row)
+      local row_str = ''
+
+      for i = 1, #row.cells do
+        local cell = row.cells[i]
+        if cell.connector then
+          row_str = row_str .. cell.connector
+        else
+          assert(cell.commit)
+          local symbol = cell.commit.msg
+          symbol = cell.emphasis and symbol:lower() or symbol
+          row_str = row_str .. symbol
+        end
+      end
+
+      return row_str
+    end
+
+    ---@param row I.Row
+    ---@return string
     local function row_to_debg(row)
       local row_str = ''
 
@@ -1047,7 +1067,13 @@ local function _gitgraph(data, opt)
         else
           assert(cell.commit)
 
+          -- if not cell.commit.debug then
+          --   cell.commit.debug = next_char()
+          -- end
+          --
+          -- local symbol = cell.commit.debug or '?'
           local symbol = cell.commit.msg
+
           symbol = cell.emphasis and symbol:lower() or symbol
           row_str = row_str .. symbol
         end
@@ -1088,7 +1114,7 @@ local function _gitgraph(data, opt)
         add_to_row((' '):rep(padding - #alpha_row.cells))
         add_to_row(row_to_str(proper_row))
       elseif options.mode == 'test' then
-        add_to_row(row_to_debg(alpha_row))
+        add_to_row(row_to_test(alpha_row))
       else
         add_to_row(row_to_str(proper_row))
       end
@@ -1279,6 +1305,19 @@ local function _gitgraph(data, opt)
       end
     end
 
+    do
+      -- we expect number of rows to be odd always !! since the last
+      -- row is a commit row without a connector row following it
+      assert(#graph % 2 == 1)
+      local last_row = graph[#graph]
+      for j = 1, #last_row.cells do
+        local cell = last_row.cells[j]
+        if cell.commit and not cell.is_commit then
+          cell.connector = GVER
+        end
+      end
+    end
+
     -- horizontal connections
     --
     -- a stopped connector is one that has a void cell below it
@@ -1287,7 +1326,7 @@ local function _gitgraph(data, opt)
     for j = 1, #row.cells do
       local this = graph[i].cells[j]
       local below = graph[i + 1].cells[j]
-      if not this.connector and below.connector == ' ' then
+      if not this.connector and (not below or below.connector == ' ') then
         assert(this.commit)
         stopped[#stopped + 1] = j
       end
@@ -1336,12 +1375,14 @@ local function _gitgraph(data, opt)
       end
     end
 
-    for _, interval in ipairs(intervals) do
-      local a, b = interval.start, interval.stop
-      for j = a + 1, b - 1 do
-        local this = graph[i].cells[j]
-        if this.connector == ' ' then
-          this.connector = GHOR
+    if i % 2 == 0 then
+      for _, interval in ipairs(intervals) do
+        local a, b = interval.start, interval.stop
+        for j = a + 1, b - 1 do
+          local this = graph[i].cells[j]
+          if this.connector == ' ' then
+            this.connector = GHOR
+          end
         end
       end
     end
@@ -1967,6 +2008,24 @@ function M.test()
         'A         ',
       },
     },
+    -- {
+    --   name = 'short-frank',
+    --   commits = {
+    --     'G EAFDC',
+    --     'F DEA',
+    --     'E C',
+    --     'D CA',
+    --   },
+    --   expect = {
+    --     'G ',
+    --     'e a f d c ',
+    --     'E A F D C ',
+    --     'e A a d C ',
+    --     'E A A D C ',
+    --     'c A A D C ',
+    --     'C A A D   ',
+    --   },
+    -- },
     {
       name = 'julia',
       commits = {
@@ -2036,7 +2095,7 @@ function M.test()
         report_failure('------ FAILURE ------')
         report_failure('failure in scenario ' .. scenario.name .. ' at line ' .. tostring(i))
         report_failure('expected:')
-        report_failure('    ' .. scenario.expect[i])
+        report_failure('    ' .. (scenario.expect[i] or 'NA'))
         report_failure('got:')
         report_failure('    ' .. line)
         report_failure('---------------------')
