@@ -793,6 +793,11 @@ local function _gitgraph(data, opt)
             -- handle bi-connector rows
             local is_bi_crossing, bi_crossing_safely_resolveable = get_is_bi_crossing(graph, next_commit, #graph)
 
+            if is_bi_crossing then
+              log.info('is_bi_crossing:', is_bi_crossing)
+              log.info('    safe:', bi_crossing_safely_resolveable)
+            end
+
             -- if get_is_bi_crossing(graph, next_commit, #graph) then
             if is_bi_crossing and bi_crossing_safely_resolveable then
               -- if false then
@@ -1730,7 +1735,14 @@ function M.test()
 
   local scenarios = require('tests')
 
+  local subset = {}
   for _, scenario in ipairs(scenarios) do
+    if scenario.name == 'letieu' then
+      subset[#subset + 1] = scenario
+    end
+  end
+
+  for _, scenario in ipairs(subset) do
     res[#res + 1] = ' ------ ' .. scenario.name .. ' ------ '
 
     for _, com in ipairs(scenario.commits) do
