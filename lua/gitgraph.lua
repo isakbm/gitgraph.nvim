@@ -1190,17 +1190,19 @@ local function _gitgraph(data, opt)
               add_to_row(value)
             end
           end
+
+          if options.mode == 'debug' then
+            local parents = ''
+            for _, h in ipairs(graph[idx].commit.parents) do
+              local p = commits[h]
+              parents = parents .. (p and p.msg or '?')
+            end
+            add_to_row(c.msg .. ' -> ' .. parents)
+          end
         else
           local c = alpha_graph[idx - 1].commit
           assert(c)
-          if options.mode == 'debug' then
-            local parents = ''
-            for _, h in ipairs(graph[idx - 1].commit.parents) do
-              local p = commits[h]
-              parents = parents .. ' ' .. (p and p.msg or '?')
-            end
-            add_to_row((' '):rep(padding - #alpha_row.cells) .. c.msg .. ' ->> ' .. parents)
-          else
+          if options.mode ~= 'debug' then
             add_to_row((' '):rep(padding - #alpha_row.cells))
             add_to_row((' '):rep(7))
 
@@ -1222,7 +1224,11 @@ local function _gitgraph(data, opt)
         end
       end
 
-      lines[#lines + 1] = table.concat(row_str_arr, ' ')
+      if options.mode == 'debug' then
+        lines[#lines + 1] = table.concat(row_str_arr, ' '):gsub('%s*$', '')
+      else
+        lines[#lines + 1] = table.concat(row_str_arr, ' ')
+      end
     end
 
     return lines, highlights, head_loc
@@ -1700,393 +1706,16 @@ function M.test()
   print('seeding:', seed)
   math.randomseed(seed)
 
-  local scenarios = {
-    {
-      name = 'foo',
-      commits = {
-        'G D',
-        'F C',
-        'E C',
-        'D AB',
-        'C A',
-        'B A',
-        'A',
-      },
-      expect = {
-        'G ',
-        'd ',
-        'D F ',
-        'D c ',
-        'D C E ',
-        'D C c ',
-        'D C   ',
-        'a C   b ',
-        'A C   B ',
-        'A a   B ',
-        'A A   B ',
-        'A A   a ',
-        'A       ',
-      },
-    },
-    {
-      name = 'bar',
-      commits = {
-        'F C',
-        'E B',
-        'D A',
-        'C BA',
-        'B A',
-        'A',
-      },
-      expect = {
-        'F ',
-        'c ',
-        'C E ',
-        'C b ',
-        'C B D ',
-        'C B a ',
-        'C B A ',
-        'b B a ',
-        'B   A ',
-        'a   A ',
-        'A     ',
-      },
-    },
-    {
-      name = 'bi-crossing 1',
-      commits = {
-        'J G',
-        'I F',
-        'H F',
-        'G EB',
-        'F D',
-        'E A',
-        'D A',
-        'C A',
-        'B A',
-        'A',
-      },
-      expect = {
-        'J ',
-        'g ',
-        'G I ',
-        'G f ',
-        'G F H ',
-        'G F f ',
-        'G F   ',
-        'e F   b ',
-        'E F   B ',
-        'E d   B ',
-        'E D   B ',
-        'a D   B ',
-        'A D   B ',
-        'A a   B ',
-        'A A C B ',
-        'A A a B ',
-        'A A A B ',
-        'A A A a ',
-        'A       ',
-      },
-    },
-    {
-      name = 'bi-crossing 2',
-      commits = {
-        'G C',
-        'F D',
-        'E C',
-        'D CB',
-        'C A',
-        'B A ',
-        'A',
-      },
-      expect = {
-        'G ',
-        'c ',
-        'C F ',
-        'C d ',
-        'C D E ',
-        'C D c ',
-        'C D   ',
-        'c b   ',
-        'C B   ',
-        'a B   ',
-        'A B   ',
-        'A a   ',
-        'A     ',
-      },
-    },
-    {
-      name = 'strange 1',
-      commits = {
-        'G ADBEF',
-        'F CADEB',
-        'E DA',
-        'D BC',
-        'C BA',
-        'B A',
-        'A ',
-      },
-      expect = {
-        'G ',
-        'a d b e f ',
-        'A D B E F ',
-        'A d B e c a   b ',
-        'A D B E C A   B ',
-        'A D B d C a   B ',
-        'A D B   C A   B ',
-        'A c b   C A   B ',
-        'A C B     A   B ',
-        'A b B     a   B ',
-        'A B       A     ',
-        'A a       A     ',
-        'A               ',
-      },
-    },
-
-    {
-      name = 'strange 2',
-      commits = {
-        'G BDECFA',
-        'F BECAD',
-        'E BAD',
-        'D C',
-        'C AB',
-        'B A',
-        'A ',
-      },
-      expect = {
-        'G ',
-        'b d e c f a ',
-        'B D E C F A ',
-        'B d e C b a c   ',
-        'B D E C B A C   ',
-        'B D d C b a C   ',
-        'B D   C B A C   ',
-        'B c   C B A C   ',
-        'B C       A     ',
-        'B b       a     ',
-        'B         A     ',
-        'a         A     ',
-        'A               ',
-      },
-    },
-    {
-      name = 'branch out',
-      commits = {
-        'E AB',
-        'D B',
-        'C B',
-        'B A',
-        'A',
-      },
-      expect = {
-        'E ',
-        'a b ',
-        'A B D ',
-        'A B b ',
-        'A B B C ',
-        'A B B b ',
-        'A B     ',
-        'A a     ',
-        'A       ',
-      },
-    },
-    {
-      name = 'branch in',
-      commits = {
-        'F B',
-        'E BDC',
-        'D A',
-        'C A',
-        'B A',
-        'A',
-      },
-      expect = {
-        'F ',
-        'b ',
-        'B E ',
-        'B b d c ',
-        'B B D C ',
-        'B B a C ',
-        'B B A C ',
-        'B B A a ',
-        'B   A A ',
-        'a   A A ',
-        'A       ',
-      },
-    },
-    {
-      name = 'ultra branch in',
-      commits = {
-        'H E',
-        'G E',
-        'F EDC',
-        'E B',
-        'D A',
-        'C A',
-        'B A',
-        'A',
-      },
-      expect = {
-        'H ',
-        'e ',
-        'E G ',
-        'E e ',
-        'E   F ',
-        'e   d c ',
-        'E   D C ',
-        'b   D C ',
-        'B   D C ',
-        'B   a C ',
-        'B   A C ',
-        'B   A a ',
-        'B   A A ',
-        'a   A A ',
-        'A       ',
-      },
-    },
-    {
-      name = 'alphred',
-      commits = {
-        'G DCBFE',
-        'F E',
-        'E D',
-        'D CA',
-        'C A',
-        'B A',
-        'A',
-      },
-      expect = {
-        'G ',
-        'd c b f e ',
-        'D C B F E ',
-        'D C B e E ',
-        'D C B E   ',
-        'D C B d   ',
-        'D C B     ',
-        'a c B     ',
-        'A C B     ',
-        'A a B     ',
-        'A A B     ',
-        'A A a     ',
-        'A         ',
-      },
-    },
-
-    {
-      name = 'gustav',
-      commits = {
-        'G ABFCDE',
-        'F DCEB',
-        'E ACB',
-        'D A',
-        'C B',
-        'B A',
-        'A',
-      },
-      expect = {
-        'G ',
-        'a b f c d e ',
-        'A B F C D E ',
-        'A B b c d e ',
-        'A B B C D E ',
-        'A B B C D a c b ',
-        'A B B C D A C B ',
-        'A B B C a A C B ',
-        'A B B C A A   B ',
-        'A B B b A A   B ',
-        'A B     A A     ',
-        'A a     A A     ',
-        'A               ',
-      },
-    },
-    {
-      name = 'frank',
-      commits = {
-        'G EAFDC',
-        'F DEA',
-        'E C',
-        'D CA',
-        'C B',
-        'B A',
-        'A',
-      },
-      expect = {
-        'G ',
-        'e a f d c ',
-        'E A F D C ',
-        'e A a d C ',
-        'E A A D C ',
-        'c A A D C ',
-        'C A A D   ',
-        'c A A a   ',
-        'C A A A   ',
-        'b A A A   ',
-        'B A A A   ',
-        'a A A A   ',
-        'A         ',
-      },
-    },
-    -- {
-    --   name = 'short-frank',
-    --   commits = {
-    --     'G EAFDC',
-    --     'F DEA',
-    --     'E C',
-    --     'D CA',
-    --   },
-    --   expect = {
-    --     'G ',
-    --     'e a f d c ',
-    --     'E A F D C ',
-    --     'e A a d C ',
-    --     'E A A D C ',
-    --     'c A A D C ',
-    --     'C A A D   ',
-    --   },
-    -- },
-    {
-      name = 'julia',
-      commits = {
-        'G BFDEAC',
-        'F ECBA',
-        'E ACB',
-        'D CA',
-        'C B',
-        'B A',
-        'A',
-      },
-      expect = {
-        'G ',
-        'b f d e a c ',
-        'B F D E A C ',
-        'B b D e a c ',
-        'B B D E A C ',
-        'B B D a A c b ',
-        'B B D A A C B ',
-        'B B c a A C B ',
-        'B B C A A   B ',
-        'B B b A A   B ',
-        'B     A A     ',
-        'a     A A     ',
-        'A             ',
-      },
-    },
-  }
-
   local res = {}
-
   local failures = 0
 
   local function report_failure(msg)
     res[#res + 1] = msg
   end
 
-  for _, scenario in ipairs(scenarios) do
-    -- if scenario.name ~= 'strange 2' then
-    --   goto continue
-    -- end
+  local scenarios = require('tests')
 
+  for _, scenario in ipairs(scenarios) do
     res[#res + 1] = ' ------ ' .. scenario.name .. ' ------ '
 
     for _, com in ipairs(scenario.commits) do
@@ -2123,8 +1752,6 @@ function M.test()
     end
 
     res[#res + 1] = ''
-
-    ::continue::
   end
 
   if failures > 0 then
