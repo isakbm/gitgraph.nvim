@@ -1,3 +1,5 @@
+local log = require('log')
+
 ---@class I.Highlight
 ---@field hg string -- NOTE: fine to use string since lua internalizes strings
 ---@field row integer
@@ -1781,9 +1783,36 @@ function M.random()
   return run_test_scenario(commits, true)
 end
 
+---@param cmd string
+---@return boolean -- true if failure (exit code ~= 0) false otherwise (exit code == 0)
+--- note that this method was sadly neede since there's some strange bug with lua's handle:close?
+--- it doesn't get the exit code correctly by itself?
+function check_cmd(cmd)
+  local res = io.popen(cmd .. ' 2>&1; echo $?')
+  if not res then
+    return true
+  end
+  local last_line = '1'
+  for line in res:lines() do
+    last_line = line
+  end
+  res:close()
+  return last_line ~= '0'
+end
+
 ---@param options I.DrawOptions
 ---@param args I.GitLogArgs
 function M.draw(options, args)
+  if check_cmd('git --version') then
+    log.error('git command not found, please install it')
+    return
+  end
+
+  if check_cmd('git status') then
+    log.error('does not seem to be a valid git repo')
+    return
+  end
+
   -- reuse or create buffer
   do
     if not M.buf or not vim.api.nvim_buf_is_valid(M.buf) then
