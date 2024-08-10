@@ -1104,7 +1104,7 @@ local function _gitgraph(data, opt)
 
           local is_head = false
           if not head_found then
-            is_head = branch_names and branch_names:match 'HEAD %->' or false
+            is_head = branch_names and branch_names:match('HEAD %->') or false
             if is_head then
               head_found = true
               head_loc = idx
@@ -1129,7 +1129,7 @@ local function _gitgraph(data, opt)
           local pad_str = (' '):rep(pad_size)
           add_to_row(pad_str)
           if is_head then
-            add_to_row '*'
+            add_to_row('*')
           end
 
           --- add hihlights for hash, timestamp, branch_names and tags
@@ -1406,7 +1406,7 @@ local function _gitgraph(data, opt)
       local nn = 0
 
       local symb_id = ''
-      for _, b in ipairs { l, r, u, d } do
+      for _, b in ipairs({ l, r, u, d }) do
         if b then
           nn = nn + 1
           symb_id = symb_id .. '1'
@@ -1522,31 +1522,31 @@ function M.gitgraph(options, args)
   local git_cmd = ([[git log %s %s --pretty='%s' --date='%s' %s %s]]):format(revision_range, all, format, date_format, max_count, skip)
   local handle = io.popen(git_cmd)
   if not handle then
-    print 'no handle?'
+    print('no handle?')
     return {}, {}, 1
   end
 
   ---@type string
-  local log = handle:read '*a'
+  local log = handle:read('*a')
 
   handle:close()
 
   ---@type I.RawCommit[]
   local data = {}
 
-  for line in log:gmatch '[^\r\n]+' do
-    local iter = line:gmatch '([^%z]+)'
+  for line in log:gmatch('[^\r\n]+') do
+    local iter = line:gmatch('([^%z]+)')
     local msg = iter()
     local describers = iter():gsub('[%(%)]', '') -- tags, branch names etc
     local author_date = iter()
     local author_name = iter()
     local hash = iter()
-    local parent_iter = (iter() or ''):gmatch '[^%s]+'
+    local parent_iter = (iter() or ''):gmatch('[^%s]+')
 
     local branch_names = {}
     local tags = {}
-    for desc in describers:gsub(', ', '\0'):gmatch '[^%z]+' do
-      if desc:match 'tag:.+' then
+    for desc in describers:gsub(', ', '\0'):gmatch('[^%z]+') do
+      if desc:match('tag:.+') then
         tags[#tags + 1] = desc
       else
         branch_names[#branch_names + 1] = desc
@@ -1607,9 +1607,9 @@ local function run_test_scenario(scenario, show_graph)
   ---@type I.RawCommit[]
   local raw = {}
   for i, r in ipairs(scenario) do
-    local iter = r:gmatch '[^%s]+'
+    local iter = r:gmatch('[^%s]+')
     local hash = iter()
-    local par_iter = (iter() or ''):gmatch '.'
+    local par_iter = (iter() or ''):gmatch('.')
     local parents = {}
     for parent in par_iter do
       parents[#parents + 1] = parent
@@ -2033,13 +2033,13 @@ function M.test()
 
     for i, line in ipairs(alpha_graph) do
       if line ~= scenario.expect[i] then
-        report_failure '------ FAILURE ------'
+        report_failure('------ FAILURE ------')
         report_failure('failure in scenario ' .. scenario.name .. ' at line ' .. tostring(i))
-        report_failure 'expected:'
+        report_failure('expected:')
         report_failure('    ' .. scenario.expect[i])
-        report_failure 'got:'
+        report_failure('got:')
         report_failure('    ' .. line)
-        report_failure '---------------------'
+        report_failure('---------------------')
         failures = failures + 1
       end
     end
@@ -2149,7 +2149,6 @@ Helper.apply_buffer_mappings = function(buf_id)
     if from_commit and to_commit then
       M.config.hooks.on_select_range_commit(from_commit, to_commit)
     end
-
   end, { buffer = buf_id, desc = 'select range of commit' })
 end
 
