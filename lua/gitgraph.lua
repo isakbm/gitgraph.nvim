@@ -910,8 +910,18 @@ local function _gitgraph(data, opt)
               -- end
             end
           else
+            -- if we're here then it means that this commit has no common ancestors with other commits
+            -- ... a different family ... see test `different family`
+
+            -- we must remove the already propagated connector for the current commit since it has no parents
+            for i = 1, #rowc do
+              local cell = rowc[i]
+              if cell.commit and cell.commit.hash == c.hash then
+                rowc[i] = { connector = ' ' }
+              end
+            end
             local row_idx = #graph + 1
-            graph[row_idx] = { i = row_idx, cells = { { connector = ' ' }, { connector = ' ' } } }
+            graph[row_idx] = { i = row_idx, cells = rowc }
           end
         end
       end
