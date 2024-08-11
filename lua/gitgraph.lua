@@ -1862,6 +1862,9 @@ function M.draw(options, args)
   -- make modifiable
   vim.api.nvim_set_option_value('modifiable', true, { buf = buf })
 
+  -- turn off linewrap
+  vim.api.nvim_set_option_value('wrap', false, { scope = 'local' })
+
   -- clear
   do
     local prior_buf_size = vim.api.nvim_buf_line_count(buf)
