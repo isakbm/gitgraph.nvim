@@ -1868,7 +1868,7 @@ end
 
 Helper.apply_buffer_options = function(buf_id)
   vim.api.nvim_buf_set_option(buf_id, 'modifiable', false)
-  vim.cmd('noautocmd silent! set filetype=gitgraph')
+  vim.cmd('set filetype=gitgraph')
   vim.api.nvim_buf_set_name(buf_id, 'GitGraph')
 
   local options = {
