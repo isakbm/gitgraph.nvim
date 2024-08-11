@@ -793,11 +793,6 @@ local function _gitgraph(data, opt)
             -- handle bi-connector rows
             local is_bi_crossing, bi_crossing_safely_resolveable = get_is_bi_crossing(graph, next_commit, #graph)
 
-            if is_bi_crossing then
-              log.info('is_bi_crossing:', is_bi_crossing)
-              log.info('    safe:', bi_crossing_safely_resolveable)
-            end
-
             -- if get_is_bi_crossing(graph, next_commit, #graph) then
             if is_bi_crossing and bi_crossing_safely_resolveable then
               -- if false then
