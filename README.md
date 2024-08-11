@@ -16,8 +16,9 @@ Git Graph plugin for neovim.
 - ✔️ easily configurable highlight groups
 - ✔️ performant scrolling
 - ✔️ easy to follow branch crossings
-### WIP
-- performant load times for large repos (WIP)
+### Future 
+- auto updating graph
+- performant load times for large repos
 
 # Screenshots
 
