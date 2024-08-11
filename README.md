@@ -21,8 +21,8 @@ Git Graph plugin for neovim.
 
 # Screenshots
 
-<img width="420" alt="image" src="https://github.com/user-attachments/assets/cecc231a-07ac-4557-bbca-9da438b4379b">
-<img width="420" alt="image" src="https://github.com/user-attachments/assets/c38aa5a5-274c-41b7-b552-7464f1331708">
+<img width="42%" alt="image" src="https://github.com/user-attachments/assets/cecc231a-07ac-4557-bbca-9da438b4379b">
+<img width="42%" alt="image" src="https://github.com/user-attachments/assets/c38aa5a5-274c-41b7-b552-7464f1331708">
 
 # Usage
 
