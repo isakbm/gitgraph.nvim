@@ -192,7 +192,11 @@ end
 ---@param opt I.DrawOptions
 ---@return string[]
 ---@return I.Highlight[]
+---@return integer? -- head location
+---@return boolean -- true if contained bi-crossing
 local function _gitgraph(data, opt)
+  local found_bi_crossing = false
+
   -- git graph symbols
   -- NOTE: We emmy type these to string, we expect them all
   --       to be set. The only reason the config types are
@@ -227,6 +231,8 @@ local function _gitgraph(data, opt)
   local GMCM = M.config.symbols.merge_commit ---@type string
   local GRCME = M.config.symbols.commit_end ---@type string
   local GMCME = M.config.symbols.merge_commit_end ---@type string
+
+  -- opt.pretty = true
 
   GFORKU = opt.pretty and '⓵' or GFORKU -- '┼'
   GFORKD = opt.pretty and '⓴' or GFORKD -- '┼'
@@ -793,6 +799,11 @@ local function _gitgraph(data, opt)
             -- handle bi-connector rows
             local is_bi_crossing, bi_crossing_safely_resolveable = get_is_bi_crossing(graph, next_commit, #graph)
 
+            -- used for troubleshooting and tracking complexity of tests
+            if is_bi_crossing then
+              found_bi_crossing = true
+            end
+
             -- if get_is_bi_crossing(graph, next_commit, #graph) then
             if is_bi_crossing and bi_crossing_safely_resolveable then
               -- if false then
@@ -1223,7 +1234,7 @@ local function _gitgraph(data, opt)
             if #children == 0 then
               children = '_'
             end
-            add_to_row(children .. ' -> ' .. c.msg .. ' -> ' .. parents)
+            add_to_row(':  ' .. children .. ' ' .. c.msg .. ' ' .. parents)
           end
         else
           local c = alpha_graph[idx - 1].commit
@@ -1573,7 +1584,9 @@ local function _gitgraph(data, opt)
 
   M.graph = proper_graph
 
-  return graph_to_lines(opt, alpha_graph, proper_graph)
+  local lines, highlights, head_loc = graph_to_lines(opt, alpha_graph, proper_graph)
+
+  return lines, highlights, head_loc, found_bi_crossing
 end
 
 ---@class I.GitLogArgs
@@ -1695,6 +1708,7 @@ end
 
 ---@param scenario string[]
 ---@return string[]
+---@return boolean -- true if contains bi-crossing
 ---@param show_graph? boolean
 local function run_test_scenario(scenario, show_graph)
   ---@type I.RawCommit[]
@@ -1720,9 +1734,9 @@ local function run_test_scenario(scenario, show_graph)
   end
 
   local options = { mode = (show_graph and 'debug' or 'test') }
-  local lines, _ = _gitgraph(raw, options)
+  local lines, _, _, found_bi_crossing = _gitgraph(raw, options)
 
-  return lines
+  return lines, found_bi_crossing
 end
 
 ---@return string[]
@@ -1757,22 +1771,20 @@ function M.test()
 
     res[#res + 1] = ' ------ ' .. ' result ' .. ' ------ '
 
-    -- currently we only check that the alphabet matrix is
-    -- as we expect it to be hence the two locals below
-    local alpha_graph = run_test_scenario(scenario.commits)
+    local graph, found_bi_crossing = run_test_scenario(scenario.commits, true)
 
-    -- this is used to visualize the scenario that is being tested
-    -- we keep this separate from the actual test result data since
-    -- we are not confident yet about the rendering, but we are confident
-    -- about the alphabet matrix
-    local graph = run_test_scenario(scenario.commits, true)
+    if found_bi_crossing then
+      res[#res + 1] = ' >>>>>> ' .. ' bi-crossing ' .. ' <<<<<< '
+    end
 
     for i, line in ipairs(graph) do
       res[#res + 1] = string.format('%02d', i) .. '   ' .. line
     end
 
-    for i, line in ipairs(alpha_graph) do
-      if scenario.ignore ~= true and line ~= scenario.expect[i] then
+    local fail = false
+
+    for i, line in ipairs(graph) do
+      if scenario.ignore ~= true and scenario.expect and line ~= scenario.expect[i] then
         report_failure('------ FAILURE ------')
         report_failure('failure in scenario ' .. scenario.name .. ' at line ' .. tostring(i))
         report_failure('expected:')
@@ -1780,8 +1792,12 @@ function M.test()
         report_failure('got:')
         report_failure('    ' .. line)
         report_failure('---------------------')
-        failures = failures + 1
+        fail = true
       end
+    end
+
+    if fail then
+      failures = failures + 1
     end
 
     res[#res + 1] = ''
