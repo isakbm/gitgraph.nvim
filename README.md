@@ -4,24 +4,25 @@ Git Graph plugin for neovim.
 
 > NOTE: this project is still very WIP and there is no help documentation aside from this README.md.
 
+# Roadmap - Goals
+
+### Completed
+- ✔️ 100% lua
+- ✔️ temporal topological order
+- ✔️ branches stick to their lane
+- ✔️ easy to spot merge commits and branch children
+- ✔️ hooks for easy extension with [diffview.nvim](https://github.com/sindrets/diffview.nvim) etc
+- ✔️ easily configurable date formats
+- ✔️ easily configurable highlight groups
+- ✔️ performant scrolling
+- ✔️ easy to follow branch crossings
+### WIP
+- performant load times for large repos (WIP)
+
 # Screenshots
 
-![image](https://github.com/user-attachments/assets/cecc231a-07ac-4557-bbca-9da438b4379b)
-
-<img width="572" alt="image" src="https://github.com/user-attachments/assets/c38aa5a5-274c-41b7-b552-7464f1331708">
-
-# Goals
-
-- 100% lua
-- temporal topological order
-- branches stick to their lane
-- easy to follow branch crossings 
-- easy to spot merge commits and branch children
-- compatible with sindrets.diffview
-- easily configurable date formats
-- easily configurable highlight groups
-- performant scrolling
-- performant load times for large repos (WIP)
+<img width="420" alt="image" src="https://github.com/user-attachments/assets/cecc231a-07ac-4557-bbca-9da438b4379b">
+<img width="420" alt="image" src="https://github.com/user-attachments/assets/c38aa5a5-274c-41b7-b552-7464f1331708">
 
 # Usage
 
