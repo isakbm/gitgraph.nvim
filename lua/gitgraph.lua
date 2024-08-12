@@ -257,11 +257,12 @@ local function _gitgraph(data, opt)
   ---@field j integer
   ---@field parents string[]
   ---@field children string[]
-  -- -@field merge_children string[]
-  -- -@field branch_children string[]
-  ---
+
   ---@type table<string, I.Commit>
   local commits = {}
+
+  ---@type I.Commit[]
+  local sorted_commits = {}
 
   ---@type string[]
   local hashes = {}
@@ -269,7 +270,7 @@ local function _gitgraph(data, opt)
   for _, dc in ipairs(data) do
     hashes[#hashes + 1] = dc.hash
 
-    commits[dc.hash] = {
+    local commit = {
       explored = false,
       msg = dc.msg,
       branch_names = dc.branch_names,
@@ -285,6 +286,9 @@ local function _gitgraph(data, opt)
       -- merge_children = {},
       -- branch_children = {},
     }
+
+    sorted_commits[#sorted_commits + 1] = commit
+    commits[dc.hash] = commit
   end
 
   -- populate children
@@ -318,53 +322,6 @@ local function _gitgraph(data, opt)
         }
       end
     end
-
-    -- branch children
-    -- local h = c.parents[1]
-    -- if h then
-    --   local p = commits[h]
-    --   if p then
-    --     p.branch_children[#p.branch_children + 1] = c.hash
-    --   end
-    -- end
-
-    -- merge children
-    -- for i = 2, #c.parents do
-    --   local h = c.parents[i]
-    --   local p = commits[h]
-    --   if p then
-    --     p.merge_children[#p.merge_children + 1] = c.hash
-    --   end
-    -- end
-  end
-
-  ---@type I.Commit[]
-  local sorted_commits = {}
-
-  local function create_visitor()
-    ---@type integer
-    local i = 1
-
-    ---@param commit I.Commit
-    local function visit(commit)
-      if not commit.explored then
-        commit.explored = true
-        for _, h in ipairs(commit.children) do
-          visit(commits[h])
-        end
-        commit.i = i
-        i = i + 1
-        sorted_commits[#sorted_commits + 1] = commit
-      end
-    end
-
-    return visit
-  end
-
-  local visit = create_visitor()
-
-  for _, h in ipairs(hashes) do
-    visit(commits[h])
   end
 
   local debug_intervals = {}
@@ -1239,7 +1196,7 @@ function M.gitgraph(options, args)
   local max_count = args.max_count and ('--max-count=%d'):format(args.max_count) or ''
   local skip = args.skip and ('--skip=%d'):format(args.skip) or ''
 
-  local git_cmd = ([[git log %s %s --pretty='%s' --date='%s' %s %s]]):format(revision_range, all, format, date_format, max_count, skip)
+  local git_cmd = ([[git log %s %s --pretty='%s' --date='%s' %s %s --date-order]]):format(revision_range, all, format, date_format, max_count, skip)
   local handle = io.popen(git_cmd)
   if not handle then
     print('no handle?')
