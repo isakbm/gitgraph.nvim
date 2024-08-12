@@ -2,14 +2,14 @@ local helper = {}
 
 ---@param graph I.Row[]
 ---@param r integer
-local get_commit_from_row = function(graph, r)
+local function get_commit_from_row(graph, r)
   -- trick to map both the commit row and the message row to the provided commit
   local row = 2 * (math.floor((r - 1) / 2)) + 1 -- 1 1 3 3 5 5 7 7
   local commit = graph[row].commit
   return commit
 end
 
-helper.apply_buffer_options = function(buf_id)
+function helper.apply_buffer_options(buf_id)
   vim.api.nvim_buf_set_option(buf_id, 'modifiable', false)
   vim.cmd('set filetype=gitgraph')
   vim.api.nvim_buf_set_name(buf_id, 'GitGraph')
@@ -28,7 +28,7 @@ end
 ---@param buf_id integer
 ---@param graph I.Row[]
 ---@param hooks I.Hooks
-helper.apply_buffer_mappings = function(buf_id, graph, hooks)
+function helper.apply_buffer_mappings(buf_id, graph, hooks)
   vim.keymap.set('n', '<CR>', function()
     local row = vim.api.nvim_win_get_cursor(0)[1]
     local commit = get_commit_from_row(graph, row)
@@ -51,6 +51,23 @@ helper.apply_buffer_mappings = function(buf_id, graph, hooks)
       hooks.on_select_range_commit(from_commit, to_commit)
     end
   end, { buffer = buf_id, desc = 'select range of commit' })
+end
+
+---@param cmd string
+---@return boolean -- true if failure (exit code ~= 0) false otherwise (exit code == 0)
+--- note that this method was sadly neede since there's some strange bug with lua's handle:close?
+--- it doesn't get the exit code correctly by itself?
+function helper.check_cmd(cmd)
+  local res = io.popen(cmd .. ' 2>&1; echo $?')
+  if not res then
+    return true
+  end
+  local last_line = '1'
+  for line in res:lines() do
+    last_line = line
+  end
+  res:close()
+  return last_line ~= '0'
 end
 
 return helper

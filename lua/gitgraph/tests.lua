@@ -1,11 +1,15 @@
+local core = require('gitgraph.core')
+
 ---@class GG.Test
 ---@field name string
 ---@field commits string[]
 ---@field expect string[]
 ---@field ignore? boolean
 
+local M = {}
+
 ---@type GG.Test[]
-return {
+M.scenarios = {
   {
     name = 'foo',
     commits = {
@@ -695,3 +699,122 @@ return {
 -- 11   B         A       B         │           B         │         B 6  :  GFEC B A
 -- 12   a         A       ├─────────╯           ├─────────╯
 -- 13   A                 A                     A                   A 7  :  GFECB A
+--
+
+---@param scenario string[]
+---@param show_graph? boolean
+---@param symbols I.GGSymbols
+---@param fields I.GGVarName[]
+---@return string[]
+---@return boolean -- true if contains bi-crossing
+local function run_test_scenario(scenario, show_graph, symbols, fields)
+  ---@type I.RawCommit[]
+  local raw = {}
+  for i, r in ipairs(scenario) do
+    local iter = r:gmatch('[^%s]+')
+    local hash = iter()
+    local par_iter = (iter() or ''):gmatch('.')
+    local parents = {}
+    for parent in par_iter do
+      parents[#parents + 1] = parent
+    end
+
+    raw[#raw + 1] = {
+      msg = hash,
+      hash = hash,
+      parents = parents,
+      branch_names = {},
+      tags = {},
+      author_name = '',
+      author_date = tostring(i),
+    }
+  end
+
+  local options = { mode = (show_graph and 'debug' or 'test') }
+  local _, lines, _, _, found_bi_crossing = core._gitgraph(raw, options, symbols, fields)
+
+  return lines, found_bi_crossing
+end
+
+---@param symbols I.GGSymbols
+---@param fields I.GGVarName[]
+---@return string[]
+---@return boolean
+function M.run_random(symbols, fields)
+  local random_scenario = require('gitgraph.random')
+  local commits = random_scenario()
+  return run_test_scenario(commits, true, symbols, fields)
+end
+
+---@param symbols I.GGSymbols
+---@param fields I.GGVarName[]
+---@return string[]
+---@return boolean
+function M.run_tests(symbols, fields)
+  local res = {}
+  local failures = 0
+
+  local function report_failure(msg)
+    res[#res + 1] = msg
+  end
+
+  local scenarios = require('gitgraph.tests').scenarios
+
+  local subset = {}
+  for _, scenario in ipairs(scenarios) do
+    -- if scenario.name == 'strange 2' then
+    subset[#subset + 1] = scenario
+    -- end
+  end
+
+  for _, scenario in ipairs(subset) do
+    res[#res + 1] = ' ------ ' .. scenario.name .. ' ------ '
+
+    for _, com in ipairs(scenario.commits) do
+      res[#res + 1] = com
+    end
+
+    res[#res + 1] = ' ------ ' .. ' result ' .. ' ------ '
+
+    local graph, found_bi_crossing = run_test_scenario(scenario.commits, true, symbols, fields)
+
+    if found_bi_crossing then
+      res[#res + 1] = ' >>>>>> ' .. ' bi-crossing ' .. ' <<<<<< '
+    end
+
+    for i, line in ipairs(graph) do
+      res[#res + 1] = string.format('%02d', i) .. '   ' .. line
+    end
+
+    local fail = false
+
+    for i, line in ipairs(graph) do
+      if scenario.ignore ~= true and scenario.expect and line ~= scenario.expect[i] then
+        report_failure('------ FAILURE ------')
+        report_failure('failure in scenario ' .. scenario.name .. ' at line ' .. tostring(i))
+        report_failure('expected:')
+        report_failure('    ' .. (scenario.expect[i] or 'NA'))
+        report_failure('got:')
+        report_failure('    ' .. line)
+        report_failure('---------------------')
+        fail = true
+      end
+    end
+
+    if fail then
+      failures = failures + 1
+    end
+
+    res[#res + 1] = ''
+  end
+
+  if failures > 0 then
+    report_failure(tostring(failures) .. ' failures')
+  end
+
+  report_failure(tostring(#scenarios - failures) .. ' of ' .. tostring(#scenarios) .. ' tests passed')
+
+  return res, failures > 0
+end
+
+return M
