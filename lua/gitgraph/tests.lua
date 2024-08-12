@@ -400,9 +400,9 @@ return {
       'A D B E C A   B     │ │ │ E │ │   │     E 3  :  GF E DA',
       'A D B d C a   B     │ ├─│─┴─│─┤   │',
       'A D B   C A   B     │ D │   │ │   │     D 4  :  GFE D BC',
-      'A c b   C A   B     │ ├─│───╯ │   │',
+      'A c b   C A   B     │ ├─┼───╯ │   │',
       'A C B     A   B     │ C │     │   │     C 5  :  FD C BA',
-      'A b B     a   B     │ ├─┴─────│───╯',
+      'A b B     a   B     │ ├─┴─────┼───╯',
       'A B       A         │ B       │         B 6  :  GFDC B A',
       'A a       A         ├─┴───────╯',
       'A                   A                   A 7  :  GFECB A',
@@ -437,3 +437,261 @@ return {
     },
   },
 }
+
+-- 01   G          G            G           G 1  :  _ G D
+-- 02   d          │            │
+-- 03   D F        │ F          │ F         F 2  :  _ F C
+-- 04   D c        │ │          │ │
+-- 05   D C E      │ │ E        │ │ E       E 3  :  _ E C
+-- 06   D C c      │ │ │        │ │ │
+-- 07   D C C      D │ │        D─│─│─╮     D 4  :  G D AB
+-- 08   a C C b    ├─┼─┴─╮      │ ├─╯ │
+-- 09   A C   B    │ C   │      │ C   │     C 5  :  FE C A
+-- 10   A a   B    │ │   │      │ │   │
+-- 11   A A   B    │ │   B      │ │   B     B 6  :  D B A
+-- 12   A A   a    ├─┴───╯      ├─┴───╯
+-- 13   A          A            A           A 7  :  DCB A
+--
+--
+--      F  ⓛ              F  ⓛ        F  ⓛ        F  ⓛ
+--         │                 │           │           │
+--         │              E  │ ⓛ      E  │ ⓛ      E  │ ⓛ
+--      E  │ ⓛ               │ │         │ │         │ │
+--         │ │            D  │ │ ⓛ    D  │ │ ⓛ    D  │ │ ⓛ
+--         │ │               │ │ │       │ │ │       │ │ │
+--      D  │ │ ⓛ          C  ⓮ │ │    C  ⓮ │ │    C  ⓮─│─⓷
+--         │ │ │             ⓺─ⓥ─⓷       ⓸─│─⓷       ⓶─╯ │
+--         │ │ │          B  ⓚ   │    B  ⓚ─╯ │    B  ⓚ   │
+--      C  ⓮ │ │             ⓶───╯       │   │       ⓶───╯
+--         ⓸─│─⓷          A  ⓮        A  ⓮───╯    A  ⓮
+--         ⓶─╯ │
+--      B  ⓚ   │
+--         │   │
+--         ⓶───╯
+--      A  ⓮
+--
+--
+--
+--
+--ⓚ ⓛ   ⓵
+--⓮ ⓯   ⓴
+--
+--⓺
+--
+--⓶
+--⓸
+--⓷
+--⓹
+--
+--ⓢ
+--ⓣ
+--ⓥ
+--ⓤ
+--
+--
+-- 01   J           J          J           J 1  :  _ J G
+-- 02   g           │          │
+-- 03   G I         │ I        │ I         I 2  :  _ I F
+-- 04   G f         │ │        │ │
+-- 05   G F H       │ │ H      │ │ H       H 3  :  _ H F
+-- 06   G F f       │ │ │      │ │ │
+-- 07   G F F       G │ │      G─│─│─╮     G 4  :  J G EB
+-- 08   e F F b     ├─┼─┴─╮    │ ├─╯ │
+-- 09   E F   B     │ F   │    │ F   │     F 5  :  IH F D
+-- 10   E d   B     │ │   │    │ │   │
+-- 11   E D   B     E │   │    E │   │     E 6  :  G E A
+-- 12   a D   B     │ │   │    │ │   │
+-- 13   A D   B     │ D   │    │ D   │     D 7  :  F D A
+-- 14   A a   B     │ │   │    │ │   │
+-- 15   A A C B     │ │ C │    │ │ C │     C 8  :  _ C A
+-- 16   A A a B     │ │ │ │    │ │ │ │
+-- 17   A A A B     │ │ │ B    │ │ │ B     B 9  :  G B A
+-- 18   A A A a     ├─┴─┴─╯    ├─┴─┴─╯
+-- 19   A           A          A           A 10  :  EDCB A
+--
+--
+-- 01   G      G          G            G 1  :  _ G C
+-- 02   c      │          │
+-- 03   C F    │ F        │ F          F 2  :  _ F D
+-- 04   C d    │ │        │ │
+-- 05   C D E  │ │ E      │ │ E        E 3  :  _ E C
+-- 06   C D c  │ │ │      │ │ │
+-- 07   C D C  │ D │      ├─D │        D 4  :  F D CB
+-- 08   c b C  ├─┼─╯      ├─│─╯
+-- 09   C B    C │        C │          C 5  :  GED C A
+-- 10   a B    │ │        │ │
+-- 11   A B    │ B        │ B          B 6  :  D B A
+-- 12   A a    ├─╯        ├─╯
+-- 13   A      A          A            A 7  :  CB A
+
+--
+--  ------  result  ------
+-- 01   E        E           E─╮         E 1  :  _ E AB
+-- 02   a b      ├─╮         │ │
+-- 03   A B D    │ │ D       │ │ D       D 2  :  _ D B
+-- 04   A B b    │ │ │       │ │ │
+-- 05   A B B C  │ │ │ C     │ │ │ C     C 3  :  _ C B
+-- 06   A B B b  │ ├─┴─╯     │ ├─┴─╯
+-- 07   A B      │ B         │ B         B 4  :  EDC B A
+-- 08   A a      ├─╯         ├─╯
+-- 09   A        A           A           A 5  :  EB A
+--
+--
+-- 01   F         F           F           F 1  :  _ F B
+-- 02   b         │           │
+-- 03   B E       │ E         │ E─┬─╮     E 2  :  _ E BDC
+-- 04   B b d c   │ ├─┬─╮     │ │ │ │
+-- 05   B B D C   │ │ D │     │ │ D │     D 3  :  E D A
+-- 06   B B a C   │ │ │ │     │ │ │ │
+-- 07   B B A C   │ │ │ C     │ │ │ C     C 4  :  E C A
+-- 08   B B A a   ├─╯ │ │     ├─╯ │ │
+-- 09   B   A A   B   │ │     B   │ │     B 5  :  FE B A
+-- 10   a   A A   ├───┴─╯     ├───┴─╯
+-- 11   A         A           A           A 6  :  DCB A
+--
+--
+-- 01   H          H            H           H 1  :  _ H E
+-- 02   e          │            │
+-- 03   E G        │ G          │ G         G 2  :  _ G E
+-- 04   E e        │ │          │ │
+-- 05   E E F      │ │ F        ├─│─F─╮     F 3  :  _ F EDC
+-- 06   e E d c    ├─┴─┼─╮      ├─╯ │ │
+-- 07   E   D C    E   │ │      E   │ │     E 4  :  HGF E B
+-- 08   b   D C    │   │ │      │   │ │
+-- 09   B   D C    │   D │      │   D │     D 5  :  F D A
+-- 10   B   a C    │   │ │      │   │ │
+-- 11   B   A C    │   │ C      │   │ C     C 6  :  F C A
+-- 12   B   A a    │   │ │      │   │ │
+-- 13   B   A A    B   │ │      B   │ │     B 7  :  E B A
+-- 14   a   A A    ├───┴─╯      ├───┴─╯
+-- 15   A          A            A           A 8  :  DCB A
+--
+--
+-- 01   G          G            G─┬─┬─┬─╮     G 1  :  _ G DCBFE
+-- 02   d c b f e  ├─┬─┬─┬─╮    │ │ │ │ │
+-- 03   D C B F E  │ │ │ F │    │ │ │ F │     F 2  :  G F E
+-- 04   D C B e E  │ │ │ ├─╯    │ │ │ ├─╯
+-- 05   D C B E    │ │ │ E      │ │ │ E       E 3  :  GF E D
+-- 06   D C B d    ├─│─│─╯      ├─│─│─╯
+-- 07   D C B      D │ │        D─┤ │         D 4  :  GE D CA
+-- 08   a c B      ├─┤ │        │ │ │
+-- 09   A C B      │ C │        │ C │         C 5  :  GD C A
+-- 10   A a B      │ │ │        │ │ │
+-- 11   A A B      │ │ B        │ │ B         B 6  :  G B A
+-- 12   A A a      ├─┴─╯        ├─┴─╯
+-- 13   A          A            A             A 7  :  DCB A
+--
+--
+-- 01   G                   G                   G 1  :  _ G ABFCDE
+-- 02   a b f c d e         ├─┬─┬─┬─┬─╮
+-- 03   A B F C D E         │ │ F │ │ │         F 2  :  G F DCEB
+-- 04   A B b c d e         │ │ ├─┼─┼─┤
+-- 05   A B B C D E         │ │ │ │ │ E         E 3  :  GF E ACB
+-- 06   A B B C D a c b     │ │ │ │ │ ├─┬─╮
+-- 07   A B B C D A C B     │ │ │ │ D │ │ │     D 4  :  GF D A
+-- 08   A B B C a A C B     │ │ │ ├─│─│─╯ │
+-- 09   A B B C A A   B     │ │ │ C │ │   │     C 5  :  GFE C B
+-- 10   A B B b A A   B     │ ├─┴─┴─│─│───╯
+-- 11   A B     A A         │ B     │ │         B 6  :  GFEC B A
+-- 12   A a     A A         ├─┴─────┴─╯
+-- 13   A                   A                   A 7  :  GEDB A
+--
+--
+--
+-- 01   G             G             G 1  :  _ G EAFDC
+-- 02   e a f d c     ├─┬─┬─┬─╮
+-- 03   E A F D C     │ │ F │ │     F 2  :  G F DEA
+-- 04   e A a d C     ├─│─┼─┤ │
+-- 05   E A A D C     E │ │ │ │     E 3  :  GF E C
+-- 06   c A A D C     │ │ │ │ │
+-- 07   C A A D C     │ │ │ D │     D 4  :  GF D CA
+-- 08   c A A a C     ├─│─│─┼─╯
+-- 09   C A A A       C │ │ │       C 5  :  GED C B
+-- 10   b A A A       │ │ │ │
+-- 11   B A A A       B │ │ │       B 6  :  C B A
+-- 12   a A A A       ├─┴─┴─╯
+-- 13   A             A             A 7  :  GFDB A
+--
+--
+-- 01   G                 G                 G 1  :  _ G BFDEAC
+-- 02   b f d e a c       ├─┬─┬─┬─┬─╮
+-- 03   B F D E A C       │ F │ │ │ │       F 2  :  G F ECBA
+-- 04   B b D e a c       │ ├─│─┼─┼─┤
+-- 05   B B D E A C       │ │ │ E │ │       E 3  :  GF E ACB
+-- 06   B B D a A c b     │ │ │ ├─│─┼─╮
+-- 07   B B D A A C B     │ │ D │ │ │ │     D 4  :  G D CA
+-- 08   B B c a A C B     │ │ ├─┼─│─╯ │
+-- 09   B B C A A   B     │ │ C │ │   │     C 5  :  GFED C B
+-- 10   B B b A A   B     ├─┴─┴─│─│───╯
+-- 11   B     A A         B     │ │         B 6  :  GFEC B A
+-- 12   a     A A         ├─────┴─╯
+-- 13   A                 A                 A 7  :  GFEDB A
+--
+--
+--
+--  ------  result  ------
+-- 01   H               H               H 1  :  _ H CG
+-- 02   c g             ├─╮
+-- 03   C G             │ G             G 2  :  H G C
+-- 04   C c             │ │
+-- 05   C C F           │ │ F           F 3  :  _ F BE
+-- 06   C C b e         │ │ ├─╮
+-- 07   C C B E         │ │ │ E         E 4  :  F E BD
+-- 08   C C B b d       │ │ │ ├─╮
+-- 09   C C B B D       │ │ │ │ D       D 5  :  E D BA
+-- 10   C C B B b a     ├─╯ │ │ ├─╮
+-- 11   C   B B B A     C   │ │ │ │     C 6  :  HG C B
+-- 12   b   B B B A     ├───┴─┴─╯ │
+-- 13   B         A     B         │     B 7  :  FEDC B A
+-- 14   a         A     ├─────────╯
+-- 15   A               A               A 8  :  DB A
+--
+--
+--
+--  ------  result  ------
+-- 01   H       H       H 1  :  _ H F
+-- 02   f       │
+-- 03   F G     │ G     G 2  :  _ G D
+-- 04   F d     │ │
+-- 05   F D     F │     F 3  :  H F E
+-- 06   e D     │ │
+-- 07   E D     E │     E 4  :  F E B
+-- 08   b D     │ │
+-- 09   B D     │ D     D 5  :  G D C
+-- 10   B c     │ │
+-- 11   B C     │ C     C 6  :  D C
+-- 12   B       │
+-- 13   B       B       B 7  :  E B A
+-- 14   a       │
+-- 15   A       A       A 8  :  B A
+--
+--
+--
+-- 01   G                   G                   G 1  :  _ G ADBEF
+-- 02   a d b e f           ├─┬─┬─┬─╮
+-- 03   A D B E F           │ │ │ │ F           F 2  :  G F CADEB
+-- 04   A D B e c a d b     │ │ │ ├─┼─┬─┬─╮
+-- 05   A D B E C A D B     │ │ │ E │ │ │ │     E 3  :  GF E DA
+-- 06   A D B d C a D B     │ ├─│─┴─│─┼─╯ │
+-- 07   A D B   C A   B     │ D │   │ │   │     D 4  :  GFE D BC
+-- 08   A c b   C A   B     │ ├─┼───╯ │   │
+-- 09   A C B     A   B     │ C │     │   │     C 5  :  FD C BA
+-- 10   A b B     a   B     │ ├─┴─────┼───╯
+-- 11   A B       A         │ B       │         B 6  :  GFDC B A
+-- 12   A a       A         ├─┴───────╯
+-- 13   A                   A                   A 7  :  GFECB A
+--
+--
+-- 01   G                 G                     G─┬─┬─┬─┬─╮         G 1  :  _ G BDECFA
+-- 02   b d e c f a       ├─┬─┬─┬─┬─╮           │ │ │ │ │ │
+-- 03   B D E C F A       │ │ │ │ F │           │ │ ├─│─F─┼─┬─╮     F 2  :  G F BECAD
+-- 04   B D e C b a c d   │ │ ├─│─┼─┼─┬─╮       │ │ │ │ │ │ │ │
+-- 05   B D E C B A C D   │ │ E │ │ │ │ │       │ ├─E─│─┤─┤ │ │     E 3  :  GF E BAD
+-- 06   B D d C b a C D   │ ├─┴─│─┼─┼─│─╯       │ ├───│─│─│─│─╯
+-- 07   B D   C B A C     │ D   │ │ │ │         │ D   │ │ │ │       D 4  :  GFE D C
+-- 08   B c   C B A C     │ ├───┴─│─│─╯         │ ├───┴─│─│─╯
+-- 09   B C     B A       │ C     │ │           │ C     │ │         C 5  :  GFD C AB
+-- 10   B b     B a       ├─┴─────┴─┤           ├─┴─────┴─┤
+-- 11   B         A       B         │           B         │         B 6  :  GFEC B A
+-- 12   a         A       ├─────────╯           ├─────────╯
+-- 13   A                 A                     A                   A 7  :  GFECB A

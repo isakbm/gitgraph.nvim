@@ -1,4 +1,6 @@
-local log = require('log')
+local log = require('gitgraph.log')
+local utils = require('gitgraph.utils')
+local helper = require('gitgraph.helpers')
 
 ---@class I.Highlight
 ---@field hg string -- NOTE: fine to use string since lua internalizes strings
@@ -101,9 +103,6 @@ local M = {
   graph = {},
 }
 
--- Follow conventions from mini.nvim
-local Helper = {}
-
 ---@type table<string, I.HighlightGroup>
 local ITEM_HGS = {
   hash = { name = 'GitGraphHash', fg = '#b16286' },
@@ -142,50 +141,6 @@ function M.setup(config)
   for _, hg in pairs(ITEM_HGS) do
     set_hl(hg.name, { fg = hg.fg })
   end
-end
-
----@param stuff any[]
----@param n integer
----@return any[][]
-local function pick(stuff, n)
-  assert(n >= 1)
-
-  ---@type any[][]
-  local picked = {}
-  if n == 1 then
-    for _, s in ipairs(stuff) do
-      picked[#picked + 1] = { s }
-    end
-    return picked
-  end
-
-  for i, s in ipairs(stuff) do
-    ---@type any[]
-    local subs = {}
-    for j, ss in ipairs(stuff) do
-      if i ~= j then
-        subs[#subs + 1] = ss
-      end
-    end
-
-    for _, p in ipairs(pick(subs, n - 1)) do
-      local spicked = {}
-      spicked[#spicked + 1] = s
-      for _, pp in ipairs(p) do
-        spicked[#spicked + 1] = pp
-      end
-
-      picked[#picked + 1] = spicked
-    end
-  end
-
-  return picked
-end
-
----@param stuff any[]
----@return  any[][]
-local function permutations(stuff)
-  return pick(stuff, #stuff)
 end
 
 ---@param data I.RawCommit[]
@@ -412,182 +367,14 @@ local function _gitgraph(data, opt)
     visit(commits[h])
   end
 
-  ---@type I.Row[]
-  local graph = {}
-
-  ---@type I.Row[]
-  local alpha_graph = {}
-
-  ---@type I.Row[]
-  local proper_graph = {}
-
   local debug_intervals = {}
 
-  -- heuristic to check if this row contains a "bi-crossing" of branches
-  --
-  -- a bi-crossing is when we have more than one branch "propagating" horizontally
-  -- on a connector row
-  --
-  -- this can only happen when the commit on the row
-  -- above the connector row is a merge commit
-  -- but it doesn't always happen
-  --
-  -- in addition to needing a merge commit on the row above
-  -- we need the span (interval) of the "emphasized" connector cells
-  -- (they correspond to connectors to the parents of the merge commit)
-  -- we need that span to overlap with at least one connector cell that
-  -- is destined for the commit on the next row
-  -- (the commit before the merge commit)
-  -- in addition, we need there to be more than one connector cell
-  -- destined to the next commit
-  --
-  -- here is an example
-  --
-  --
-  --   j i i          ⓮ │ │   j -> g h
-  --   g i i h        ?─?─?─╮
-  --   g i   h        │ ⓚ   │ i
-  --
-  --
-  -- overlap:
-  --
-  --   g-----h 1 4
-  --     i-i   2 3
-  --
-  -- NOTE how `i` is the commit that the `i` cells are destined for
-  --      notice how there is more than on `i` in the connector row
-  --      and that it lies in the span of g-h
-  --
-  -- some more examples
-  --
-  -- -------------------------------------
-  --
-  --   S T S          │ ⓮ │ T -> R S
-  --   S R S          ?─?─?
-  --   S R            ⓚ │   S
-  --
-  --
-  -- overlap:
-  --
-  --   S-R    1 2
-  --   S---S  1 3
-  --
-  -- -------------------------------------
-  --
-  --
-  --   c b a b        ⓮ │ │ │ c -> Z a
-  --   Z b a b        ?─?─?─?
-  --   Z b a          │ ⓚ │   b
-  --
-  -- overlap:
-  --
-  --   Z---a    1 3
-  --     b---b  2 4
-  --
-  -- -------------------------------------
-  --
-  -- finally a negative example where there is no problem
-  --
-  --
-  --   W V V          ⓮ │ │ W -> S V
-  --   S V V          ⓸─⓵─╯
-  --   S V            │ ⓚ   V
-  --
-  -- no overlap:
-  --
-  --   S-V    1 2
-  --     V-V  2 3
-  --
-  -- the reason why there is no problem (bi-crossing) above
-  -- follows from the fact that the span from V <- V only
-  -- touches the span S -> V it does not overlap it, so
-  -- figuratively we have S -> V <- V which is fine
-  --
-  -- TODO:
-  -- FIXME: need to test if we handle two bi-connectors in succession
-  --        correctly
-  --
-  ---@param i integer -- the row index
-  ---@param graph I.Row[] -- the row index
-  ---@param next_commit I.Commit -- the next commit
-  ---@return boolean -- whether or not this is a bi crossing
-  ---@return boolean -- whether or not it can be resolved safely by edge lifting
-  local function get_is_bi_crossing(graph, next_commit, i)
-    if i % 2 == 1 then
-      return false, false -- we're not a connector row NOTE: 1 indexing of lua
-    end
-
-    local prev = graph[i - 1].commit
-    assert(prev, 'expected a prev commit')
-
-    if #prev.parents < 2 then
-      return false, false -- bi-crossings only happen when prev is a merge commit
-    end
-
-    local row = graph[i]
-
-    ---@param k integer
-    local function interval_upd(x, k)
-      if k < x.start then
-        x.start = k
-      end
-      if k > x.stop then
-        x.stop = k
-      end
-    end
-
-    -- compute the emphasized interval (merge commit parent interval)
-    local emi = { start = #row.cells, stop = 1 }
-    for k, cell in ipairs(row.cells) do
-      if cell.commit and cell.emphasis then
-        interval_upd(emi, k)
-      end
-    end
-
-    -- compute connector interval
-    local coi = { start = #row.cells, stop = 1 }
-    for k, cell in ipairs(row.cells) do
-      if cell.commit and cell.commit.hash == next_commit.hash then
-        interval_upd(coi, k)
-      end
-    end
-
-    -- unsafe if starts of intervals overlap and are equal to direct parent location
-    local safe = not (emi.start == coi.start and prev.j == emi.start)
-
-    -- return earily when connector interval is trivial
-    if coi.start == coi.stop then
-      return false, safe
-    end
-
-    -- print('emi:', vim.inspect(emi))
-    -- print('coi:', vim.inspect(coi))
-
-    -- check overlap
-    do
-      -- are intervals identical, then that counts as overlap
-      if coi.start == emi.start and coi.stop == emi.stop then
-        return true, safe
-      end
-    end
-    for _, k in pairs(emi) do
-      -- emi endpoints inside coi ?
-      if coi.start < k and k < coi.stop then
-        return true, safe
-      end
-    end
-    for _, k in pairs(coi) do
-      -- coi endpoints inside emi ?
-      if emi.start < k and k < emi.stop then
-        return true, safe
-      end
-    end
-
-    return false, safe
-  end
-
   ---@param sorted_commits I.Commit[]
+  ---@return I.Row[]
   local function straight_j(sorted_commits)
+    ---@type I.Row[]
+    local graph = {}
+
     ---@param cells I.Cell[]
     ---@return I.Cell[]
     local function propagate(cells)
@@ -612,7 +399,6 @@ local function _gitgraph(data, opt)
     local function find(cells, hash, start)
       local start = start or 1
       for idx = start, #cells do
-        -- for idx, c in ipairs(cells) do
         local c = cells[idx]
         if c.commit and c.commit.hash == hash then
           return idx
@@ -797,128 +583,18 @@ local function _gitgraph(data, opt)
             graph[row_idx] = { i = row_idx, cells = rowc }
 
             -- handle bi-connector rows
-            local is_bi_crossing, bi_crossing_safely_resolveable = get_is_bi_crossing(graph, next_commit, #graph)
+            local is_bi_crossing, bi_crossing_safely_resolveable = utils.get_is_bi_crossing(graph, next_commit, #graph)
 
             -- used for troubleshooting and tracking complexity of tests
             if is_bi_crossing then
               found_bi_crossing = true
             end
 
+            local next = sorted_commits[i + 1]
+
             -- if get_is_bi_crossing(graph, next_commit, #graph) then
             if is_bi_crossing and bi_crossing_safely_resolveable then
-              -- if false then
-              -- if false then -- get_is_bi_crossing(graph, next_commit, #graph) then
-              -- print 'we have a bi crossing'
-              local next = sorted_commits[i + 1]
-              assert(next)
-              -- void all repeated reservations of `next` from
-              -- this and the previous row
-              local prev_row = graph[#graph - 1]
-              local this_row = graph[#graph]
-              assert(prev_row and this_row, 'expecting two prior rows due to bi-connector')
-
-              ---@param row I.Row
-              --- example of what this does
-              ---
-              --- input:
-              ---
-              ---   j i i          │ │ │
-              ---   j i i          ⓮ │ │     <- prev
-              ---   g i i h        ⓸─⓵─ⓥ─╮   <- bi connector
-              ---
-              --- output:
-              ---
-              ---   j i i          │ ⓶─╯
-              ---   j i            ⓮ │       <- prev
-              ---   g i   h        ⓸─│───╮   <- bi connector
-              ---
-              ---@param row I.Row
-              ---@return integer
-              local function void_repeats(row)
-                local start_voiding = false
-                local ctr = 0
-                for k, cell in ipairs(row.cells) do
-                  if cell.commit and cell.commit.hash == next.hash then
-                    if not start_voiding then
-                      start_voiding = true
-                    elseif not row.cells[k].emphasis then
-                      -- else
-
-                      row.cells[k] = { connector = ' ' } -- void it
-                      ctr = ctr + 1
-                    end
-                  end
-                end
-                return ctr
-              end
-
-              local prev_rep_ctr = void_repeats(prev_row)
-              local this_rep_ctr = void_repeats(this_row)
-
-              -- we must also take care when the prev prev has a repeat where
-              -- the repeat is not the direct parent of its child
-              --
-              --   G                        ⓯
-              --   e d c                    ⓸─ⓢ─╮
-              --   E D C F                  │ │ │ ⓯
-              --   e D C c b a d            ⓶─⓵─│─⓴─ⓢ─ⓢ─? <--- to resolve this
-              --   E D C C B A              ⓮ │ │ │ │ │
-              --   c D C C b A              ⓸─│─ⓥ─ⓥ─⓷ │
-              --   C D     B A              │ ⓮     │ │
-              --   C c     b a              ⓶─ⓥ─────⓵─⓷
-              --   C       B A              ⓮       │ │
-              --   b       B a              ⓸───────ⓥ─⓷
-              --   B         A              ⓚ         │
-              --   a         A              ⓶─────────╯
-              --   A                        ⓚ
-              local prev_prev_row = graph[#graph - 2]
-              local prev_prev_prev_row = graph[#graph - 3]
-              assert(prev_prev_row and prev_prev_prev_row)
-              do
-                local start_voiding = false
-                local ctr = 0
-                ---@type I.Cell?
-                local replacer = nil
-                for k, cell in ipairs(prev_prev_row.cells) do
-                  if cell.commit and cell.commit.hash == next.hash then
-                    if not start_voiding then
-                      start_voiding = true
-                      replacer = cell
-                    elseif k ~= prev_prev_prev_row.commit.j then
-                      local ppcell = prev_prev_prev_row.cells[k]
-                      if (not ppcell) or (ppcell and ppcell.connector == ' ') then
-                        prev_prev_row.cells[k] = { connector = ' ' } -- void it
-                        replacer.emphasis = true
-                        ctr = ctr + 1
-                      end
-                    end
-                  end
-                end
-              end
-
-              -- assert(prev_rep_ctr == this_rep_ctr)
-
-              -- newly introduced tracking cells can be squeezed in
-              --
-              -- before:
-              --
-              --   j i i          │ ⓶─╯
-              --   j i            ⓮ │
-              --   g i   h        ⓸─│───╮
-              --
-              -- after:
-              --
-              --   j i i          │ ⓶─╯
-              --   j i            ⓮ │
-              --   g i h          ⓸─│─╮
-              --
-              -- can think of this as scooting the cell to the left
-              -- when the cell was just introduced
-              -- TODO: implement this at some point
-              -- for k, cell in ipairs(this_row.cells) do
-              --   if cell.commit and not prev_row.cells[k].commit and not this_row.cells[k - 2] then
-              --   end
-              -- end
+              utils.resolve_bi_crossing(graph, next)
             end
           else
             -- if we're here then it means that this commit has no common ancestors with other commits
@@ -937,21 +613,22 @@ local function _gitgraph(data, opt)
         end
       end
     end
+
+    return graph
   end
 
-  straight_j(sorted_commits)
+  local graph = straight_j(sorted_commits)
 
   ---@class I.DrawOptions
   ---@field mode? 'debug' | 'test'
   ---@field pretty? boolean
 
-  ---@param alpha_graph I.Row[]
-  ---@param proper_graph I.Row[]
+  ---@param graph I.Row[]
   ---@param options I.DrawOptions
   ---@return string[]
   ---@return I.Highlight[]
   ---@return integer?
-  local function graph_to_lines(options, alpha_graph, proper_graph)
+  local function graph_to_lines(options, graph)
     ---@type integer?
     local head_loc = 1
 
@@ -960,42 +637,6 @@ local function _gitgraph(data, opt)
 
     ---@type I.Highlight[]
     local highlights = {}
-
-    local function char_generator()
-      local alphabet = {
-        'A',
-        'B',
-        'C',
-        'D',
-        'E',
-        'F',
-        'G',
-        'H',
-        'I',
-        'J',
-        'K',
-        'L',
-        'M',
-        'N',
-        'O',
-        'P',
-        'Q',
-        'R',
-        'S',
-        'T',
-        'U',
-        'V',
-        'W',
-      }
-      local ctr = #alphabet - 1
-      return function()
-        local char = alphabet[(ctr % #alphabet) + 1]
-        ctr = ctr - 1
-        return char
-      end
-    end
-
-    local next_char = char_generator()
 
     ---@param cell I.Cell
     ---@return string
@@ -1106,31 +747,20 @@ local function _gitgraph(data, opt)
     ---@return string
     local function row_to_debg(row)
       local row_str = ''
-
       for i = 1, #row.cells do
         local cell = row.cells[i]
-        if cell.connector then
-          row_str = row_str .. cell.connector
-        else
-          assert(cell.commit)
-
-          -- if not cell.commit.debug then
-          --   cell.commit.debug = next_char()
-          -- end
-          --
-          -- local symbol = cell.commit.debug or '?'
-          local symbol = cell.commit.msg
-
+        local symbol = ' '
+        if cell.commit then
+          symbol = cell.commit.msg
           symbol = cell.emphasis and symbol:lower() or symbol
-          row_str = row_str .. symbol
         end
+        row_str = row_str .. symbol
       end
-
       return row_str
     end
 
     local width = 0
-    for _, row in ipairs(proper_graph) do
+    for _, row in ipairs(graph) do
       if #row.cells > width then
         width = #row.cells
       end
@@ -1139,9 +769,8 @@ local function _gitgraph(data, opt)
     -- TODO: could obviously do it better than this
     local head_found = false
 
-    for idx = 1, #alpha_graph do
-      local alpha_row = alpha_graph[idx]
-      local proper_row = proper_graph[idx]
+    for idx = 1, #graph do
+      local proper_row = graph[idx]
 
       local row_str_arr = {}
       local offset = 0
@@ -1157,17 +786,17 @@ local function _gitgraph(data, opt)
 
       -- part 1
       if options.mode == 'debug' then
-        add_to_row(row_to_debg(alpha_row))
-        add_to_row((' '):rep(padding - #alpha_row.cells))
+        add_to_row(row_to_debg(proper_row))
+        add_to_row((' '):rep(padding - #proper_row.cells))
         add_to_row(row_to_str(proper_row))
       elseif options.mode == 'test' then
-        add_to_row(row_to_test(alpha_row))
+        add_to_row(row_to_test(proper_row))
       else
         add_to_row(row_to_str(proper_row))
       end
 
       if options.mode ~= 'test' then
-        local c = alpha_row.commit
+        local c = proper_row.commit
         if c then
           local hash = c.hash:sub(1, 7)
           local timestamp = c.author_date
@@ -1194,7 +823,7 @@ local function _gitgraph(data, opt)
             ['tag'] = tags,
           }
 
-          local pad_size = padding - #alpha_row.cells
+          local pad_size = padding - #proper_row.cells
 
           if is_head then
             pad_size = pad_size - 2
@@ -1237,10 +866,10 @@ local function _gitgraph(data, opt)
             add_to_row(':  ' .. children .. ' ' .. c.msg .. ' ' .. parents)
           end
         else
-          local c = alpha_graph[idx - 1].commit
+          local c = graph[idx - 1].commit
           assert(c)
           if options.mode ~= 'debug' then
-            add_to_row((' '):rep(padding - #alpha_row.cells))
+            add_to_row((' '):rep(padding - #proper_row.cells))
             add_to_row((' '):rep(7))
 
             highlights[#highlights + 1] = {
@@ -1280,8 +909,6 @@ local function _gitgraph(data, opt)
   -- print '----------------'
 
   -- store stage 1 graph
-  alpha_graph = vim.deepcopy(graph)
-  --
   --
   ---@param c I.Cell?
   ---@return string?
@@ -1292,17 +919,6 @@ local function _gitgraph(data, opt)
   -- inserts vertical and horizontal pipes
   for i = 2, #graph - 1 do
     local row = graph[i]
-
-    ---@param cells I.Cell[]
-    local function count_live(cells)
-      local n = 0
-      for _, r in ipairs(cells) do
-        if r.commit or r.connector == GVER then
-          n = n + 1
-        end
-      end
-      return n
-    end
 
     ---@param cells I.Cell[]
     local function count_emph(cells)
@@ -1580,11 +1196,9 @@ local function _gitgraph(data, opt)
     end
   end
 
-  proper_graph = graph
+  M.graph = graph
 
-  M.graph = proper_graph
-
-  local lines, highlights, head_loc = graph_to_lines(opt, alpha_graph, proper_graph)
+  local lines, highlights, head_loc = graph_to_lines(opt, graph)
 
   return lines, highlights, head_loc, found_bi_crossing
 end
@@ -1678,34 +1292,6 @@ function M.gitgraph(options, args)
   return _gitgraph(data, options)
 end
 
----@return string[]
-local function random_scenario()
-  local commits = { 'A', 'B', 'C', 'D', 'E', 'F', 'G' }
-  local size = #commits
-
-  local scenario = {}
-
-  for i = size, 1, -1 do
-    local hash = commits[i]
-    local remaining = {}
-    for j = 1, i - 1 do
-      remaining[j] = commits[j]
-    end
-
-    ---@type string[][]
-    local possibilities = pick(remaining, math.random(#remaining))
-
-    ---@type string[]
-    local parents = possibilities[math.random(#possibilities)]
-
-    local parents_str = table.concat(parents or {}, '')
-
-    scenario[#scenario + 1] = hash .. (parents_str and (' ' .. parents_str) or '')
-  end
-
-  return scenario
-end
-
 ---@param scenario string[]
 ---@return string[]
 ---@return boolean -- true if contains bi-crossing
@@ -1753,7 +1339,7 @@ function M.test()
     res[#res + 1] = msg
   end
 
-  local scenarios = require('tests')
+  local scenarios = require('gitgraph.tests')
 
   local subset = {}
   for _, scenario in ipairs(scenarios) do
@@ -1813,6 +1399,7 @@ function M.test()
 end
 
 function M.random()
+  local random_scenario = require('gitgraph.random')
   local commits = random_scenario()
   return run_test_scenario(commits, true)
 end
@@ -1821,7 +1408,7 @@ end
 ---@return boolean -- true if failure (exit code ~= 0) false otherwise (exit code == 0)
 --- note that this method was sadly neede since there's some strange bug with lua's handle:close?
 --- it doesn't get the exit code correctly by itself?
-function check_cmd(cmd)
+local function check_cmd(cmd)
   local res = io.popen(cmd .. ' 2>&1; echo $?')
   if not res then
     return true
@@ -1891,56 +1478,8 @@ function M.draw(options, args)
     vim.api.nvim_win_set_cursor(0, { cursor_line, 0 })
   end
 
-  Helper.apply_buffer_options(buf)
-  Helper.apply_buffer_mappings(buf)
-end
-
-Helper.apply_buffer_options = function(buf_id)
-  vim.api.nvim_buf_set_option(buf_id, 'modifiable', false)
-  vim.cmd('set filetype=gitgraph')
-  vim.api.nvim_buf_set_name(buf_id, 'GitGraph')
-
-  local options = {
-    'foldcolumn=0',
-    'foldlevel=999',
-    'norelativenumber',
-    'nospell',
-    'noswapfile',
-  }
-  -- Vim's `setlocal` is currently more robust compared to `opt_local`
-  vim.cmd(('silent! noautocmd setlocal %s'):format(table.concat(options, ' ')))
-end
-
-Helper.apply_buffer_mappings = function(buf_id)
-  vim.keymap.set('n', '<CR>', function()
-    local row = vim.api.nvim_win_get_cursor(0)[1]
-    local commit = Helper.get_commit_from_row(row)
-    if commit then
-      M.config.hooks.on_select_commit(commit)
-    end
-  end, { buffer = buf_id, desc = 'select commit under cursor' })
-
-  vim.keymap.set('v', '<CR>', function()
-    -- make sure visual selection is done
-    vim.cmd('noau normal! "vy"')
-
-    local start_row = vim.fn.getpos("'<")[2]
-    local end_row = vim.fn.getpos("'>")[2]
-
-    local to_commit = Helper.get_commit_from_row(start_row)
-    local from_commit = Helper.get_commit_from_row(end_row)
-
-    if from_commit and to_commit then
-      M.config.hooks.on_select_range_commit(from_commit, to_commit)
-    end
-  end, { buffer = buf_id, desc = 'select range of commit' })
-end
-
-Helper.get_commit_from_row = function(r)
-  -- trick to map both the commit row and the message row to the provided commit
-  local row = 2 * (math.floor((r - 1) / 2)) + 1 -- 1 1 3 3 5 5 7 7
-  local commit = M.graph[row].commit
-  return commit
+  helper.apply_buffer_options(buf)
+  helper.apply_buffer_mappings(buf, M.graph, M.config.hooks)
 end
 
 return M
