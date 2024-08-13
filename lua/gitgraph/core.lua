@@ -1,5 +1,6 @@
 local utils = require('gitgraph.utils')
 local highlights = require('gitgraph.highlights')
+local log = require('gitgraph.log')
 
 local M = {}
 
@@ -147,37 +148,43 @@ function M._gitgraph(data, opt, sym, fields)
     commits[dc.hash] = commit
   end
 
-  -- populate children
-  -- for _, c in pairs(commits) do
-  -- NOTE: you want to be very careful here with the order
-  --       keep in mind that `pairs` does not keep an order
-  --       while `ipairs` does keep an order
-  for _, h in ipairs(hashes) do
-    local c = commits[h]
+  do
+    local start = os.clock()
+    -- populate children
+    -- for _, c in pairs(commits) do
+    -- NOTE: you want to be very careful here with the order
+    --       keep in mind that `pairs` does not keep an order
+    --       while `ipairs` does keep an order
+    for _, h in ipairs(hashes) do
+      local c = commits[h]
 
-    -- children
-    for _, h in ipairs(c.parents) do
-      local p = commits[h]
-      if p then
-        p.children[#p.children + 1] = c.hash
-      else
-        -- create a virtual parent, it is not added to the list of commit hashes
-        commits[h] = {
-          hash = h,
-          author_name = 'virtual',
-          is_void = false,
-          msg = 'virtual parent',
-          explored = false,
-          author_date = 'unknown',
-          parents = {},
-          children = { c.hash },
-          branch_names = {},
-          tags = {},
-          i = -1,
-          j = -1,
-        }
+      -- children
+      for _, h in ipairs(c.parents) do
+        local p = commits[h]
+        if p then
+          p.children[#p.children + 1] = c.hash
+        else
+          -- create a virtual parent, it is not added to the list of commit hashes
+          commits[h] = {
+            hash = h,
+            author_name = 'virtual',
+            is_void = false,
+            msg = 'virtual parent',
+            explored = false,
+            author_date = 'unknown',
+            parents = {},
+            children = { c.hash },
+            branch_names = {},
+            tags = {},
+            i = -1,
+            j = -1,
+          }
+        end
       end
     end
+
+    local dur = os.clock() - start
+    log.info('children dur:', dur * 1000, 'ms')
   end
 
   ---@param sorted_commits I.Commit[]

@@ -6,6 +6,8 @@ local M = {}
 ---@param date_format string
 ---@return I.RawCommit[]
 function M.git_log_pretty(args, date_format)
+  local start = os.clock()
+
   -- you cannot use both all and range at the same time
   if args.all and args.revision_range then
     args.revision_range = nil
@@ -16,7 +18,8 @@ function M.git_log_pretty(args, date_format)
   local cli_args = {
     args.revision_range or '', -- revision range
     args.all and '--all' or '', -- all branches?
-    'format:%s%x00(%D)%x00%ad%x00%an%x00%H%x00%P', -- format makes it easy to extract info
+    -- 'format:%s%x00(%D)%x00%ad%x00%an%x00%H%x00%P', -- format makes it easy to extract info
+    'format:%s%x00(%D)%x00%ad%x00%an%x00%h%x00%p', -- format makes it easy to extract info
     'format:' .. date_format, -- date format
     args.max_count and ('--max-count=%d'):format(args.max_count) or '', -- max count
     args.skip and ('--skip=%d'):format(args.skip) or '', -- skip
@@ -72,6 +75,9 @@ function M.git_log_pretty(args, date_format)
       parents = parents,
     }
   end
+
+  local dur = os.clock() - start
+  log.info('cli duration:', dur * 1000, 'ms')
 
   return data
 end

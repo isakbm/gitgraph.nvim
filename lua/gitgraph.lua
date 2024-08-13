@@ -51,6 +51,7 @@ local ITEM_HGS = require('gitgraph.highlights').ITEM_HGS
 ---@field symbols? I.GGSymbols
 ---@field format? I.GGFormat
 ---@field hooks? I.Hooks
+---@field log_level? integer
 
 ---@class I.HighlightGroup
 ---@field name string
@@ -89,16 +90,17 @@ local M = {
     },
     hooks = {
       on_select_commit = function(commit)
-        print('selected commit:', commit.hash)
+        log.info('selected commit:', commit.hash)
       end,
       on_select_range_commit = function(from, to)
-        print('selected range:', from.hash, to.hash)
+        log.info('selected range:', from.hash, to.hash)
       end,
     },
     format = {
       timestamp = '%H:%M:%S %d-%m-%Y',
       fields = { 'hash', 'timestamp', 'author', 'branch_name', 'tag' },
     },
+    log_level = vim.log.levels.ERROR,
   },
   ---@type integer?
   buf = nil,
@@ -126,11 +128,18 @@ function M.setup(config)
 
   -- used for random graph testing
   math.randomseed(os.time())
+
+  -- set log level
+  log.set_level(M.config.log_level)
 end
 
 ---@param options I.DrawOptions
 ---@param args I.GitLogArgs
 function M.draw(options, args)
+  M.graph = {}
+
+  local so = os.clock()
+
   if helper.check_cmd('git --version') then
     log.error('git command not found, please install it')
     return
@@ -156,28 +165,50 @@ function M.draw(options, args)
   -- make modifiable
   vim.api.nvim_set_option_value('modifiable', true, { buf = buf })
 
+  -- unlisted
+  vim.api.nvim_set_option_value('buflisted', false, { buf = buf })
+
   -- turn off linewrap
   vim.api.nvim_set_option_value('wrap', false, { scope = 'local' })
 
+  -- clear highlights
+  vim.api.nvim_buf_clear_namespace(buf, -1, 0, -1)
+
   -- clear
   do
-    local prior_buf_size = vim.api.nvim_buf_line_count(buf)
-    vim.api.nvim_buf_set_lines(buf, 0, prior_buf_size, false, {})
+    local cl_start = os.clock()
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
+    local clear_dur = os.clock() - cl_start
+    log.info('clear dur', clear_dur * 1000, 'ms')
   end
 
   -- extract graph data
   local lines, highlights, head_loc = M.gitgraph(options, args)
 
+  local start = os.clock()
   -- put graph data in buffer
   do
     -- text
     vim.api.nvim_buf_set_lines(buf, 0, #lines, false, lines)
 
-    -- highlights
-    for _, hl in ipairs(highlights) do
-      local offset = 1
-      vim.api.nvim_buf_add_highlight(buf, 0, hl.hg, hl.row - 1, hl.start - 1 + offset, hl.stop + offset)
+    local function high()
+      for _, hl in ipairs(highlights) do
+        local offset = 1
+        vim.api.nvim_buf_add_highlight(buf, -1, hl.hg, hl.row - 1, hl.start - 1 + offset, hl.stop + offset)
+      end
     end
+
+    -- highlights
+    local co = coroutine.create(high)
+
+    local function wait_poll()
+      if coroutine.status(co) ~= 'dead' then
+        coroutine.resume(co)
+        vim.defer_fn(wait_poll, 16) -- Adjust delay as needed
+      end
+    end
+
+    vim.defer_fn(wait_poll, 1)
   end
 
   do
@@ -187,6 +218,11 @@ function M.draw(options, args)
 
   helper.apply_buffer_options(buf)
   helper.apply_buffer_mappings(buf, M.graph, M.config.hooks)
+  local dur = os.clock() - start
+  log.info('rest dur:', dur * 1000, 'ms')
+
+  local tot_dur = os.clock() - so
+  log.info('total dur:', tot_dur * 1000, 'ms')
 end
 
 ---@class I.GitLogArgs
@@ -215,8 +251,11 @@ function M.gitgraph(options, args)
   local data = require('gitgraph.git').git_log_pretty(args, M.config.format.timestamp)
 
   --- does the magic
+  local start = os.clock()
   local graph, lines, highlights, head_loc = core._gitgraph(data, options, M.config.symbols, M.config.format.fields)
   M.graph = graph
+  local dur = os.clock() - start
+  log.info('_gitgraph dur:', dur * 1000, 'ms')
 
   return lines, highlights, head_loc
 end
