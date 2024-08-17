@@ -1,5 +1,9 @@
 local M = {}
 
+---@class I.HighlightGroup
+---@field name string
+---@field fg string
+
 ---@type table<string, I.HighlightGroup>
 M.ITEM_HGS = {
   hash = { name = 'GitGraphHash', fg = '#b16286' },

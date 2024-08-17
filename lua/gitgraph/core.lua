@@ -4,6 +4,32 @@ local log = require('gitgraph.log')
 
 local M = {}
 
+---@class I.GitLogArgs
+---@field all? boolean
+---@field revision_range? string
+---@field max_count? integer
+---@field skip? integer
+
+---@param config I.GGConfig
+---@param options I.DrawOptions
+---@param args I.GitLogArgs
+---@return string[]
+---@return I.Highlight[]
+---@return integer?
+function M.gitgraph(config, options, args)
+  --- depends on `git`
+  local data = require('gitgraph.git').git_log_pretty(args, config.format.timestamp)
+
+  --- does the magic
+  local start = os.clock()
+  local graph, lines, highlights, head_loc = M._gitgraph(data, options, config.symbols, config.format.fields)
+  M.graph = graph
+  local dur = os.clock() - start
+  log.info('_gitgraph dur:', dur * 1000, 'ms')
+
+  return lines, highlights, head_loc
+end
+
 ---@param data I.RawCommit[]
 ---@param opt I.DrawOptions
 ---@param sym I.GGSymbols
@@ -140,8 +166,6 @@ function M._gitgraph(data, opt, sym, fields)
       parents = dc.parents,
       is_void = false,
       children = {},
-      -- merge_children = {},
-      -- branch_children = {},
     }
 
     sorted_commits[#sorted_commits + 1] = commit

@@ -2,6 +2,15 @@ local log = require('gitgraph.log')
 
 local M = {}
 
+---@class I.RawCommit
+---@field hash string
+---@field parents string[]
+---@field msg string
+---@field branch_names string[]
+---@field tags string[]
+---@field author_date string
+---@field author_name string
+
 ---@param args I.GitLogArgs
 ---@param date_format string
 ---@return I.RawCommit[]
