@@ -1,5 +1,5 @@
 local log = require('gitgraph.log')
-local helper = require('gitgraph.helpers')
+local utils = require('gitgraph.utils')
 local core = require('gitgraph.core')
 
 local M = {}
@@ -12,12 +12,12 @@ function M.draw(config, options, args)
 
   local so = os.clock()
 
-  if helper.check_cmd('git --version') then
+  if utils.check_cmd('git --version') then
     log.error('git command not found, please install it')
     return
   end
 
-  if helper.check_cmd('git status') then
+  if utils.check_cmd('git status') then
     log.error('does not seem to be a valid git repo')
     return
   end
@@ -55,7 +55,8 @@ function M.draw(config, options, args)
   end
 
   -- extract graph data
-  local lines, highlights, head_loc = core.gitgraph(config, options, args)
+  local graph, lines, highlights, head_loc = core.gitgraph(config, options, args)
+  M.graph = graph
 
   local start = os.clock()
   -- put graph data in buffer
@@ -88,8 +89,8 @@ function M.draw(config, options, args)
     vim.api.nvim_win_set_cursor(0, { cursor_line, 0 })
   end
 
-  helper.apply_buffer_options(buf)
-  helper.apply_buffer_mappings(buf, M.graph, config.hooks)
+  utils.apply_buffer_options(buf)
+  utils.apply_buffer_mappings(buf, M.graph, config.hooks)
   local dur = os.clock() - start
   log.info('rest dur:', dur * 1000, 'ms')
 

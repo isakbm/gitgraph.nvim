@@ -32,7 +32,6 @@ Git Graph plugin for neovim.
 ```lua
   {
     'isakbm/gitgraph.nvim',
-    ---@type I.GGConfig
     opts = {
       symbols = {
         merge_commit = 'M',

@@ -2,6 +2,12 @@ local utils = require('gitgraph.utils')
 local highlights = require('gitgraph.highlights')
 local log = require('gitgraph.log')
 
+---@class I.Highlight
+---@field hg string -- NOTE: fine to use string since lua internalizes strings
+---@field row integer
+---@field start integer
+---@field stop integer
+
 local M = {}
 
 ---@class I.GitLogArgs
@@ -13,6 +19,7 @@ local M = {}
 ---@param config I.GGConfig
 ---@param options I.DrawOptions
 ---@param args I.GitLogArgs
+---@return I.Row[]
 ---@return string[]
 ---@return I.Highlight[]
 ---@return integer?
@@ -23,11 +30,10 @@ function M.gitgraph(config, options, args)
   --- does the magic
   local start = os.clock()
   local graph, lines, highlights, head_loc = M._gitgraph(data, options, config.symbols, config.format.fields)
-  M.graph = graph
   local dur = os.clock() - start
   log.info('_gitgraph dur:', dur * 1000, 'ms')
 
-  return lines, highlights, head_loc
+  return graph, lines, highlights, head_loc
 end
 
 ---@param data I.RawCommit[]
