@@ -1,5 +1,4 @@
 local utils = require('gitgraph.utils')
-local highlights = require('gitgraph.highlights')
 local log = require('gitgraph.log')
 
 ---@class I.Highlight
@@ -46,49 +45,41 @@ end
 ---@return integer? -- head location
 ---@return boolean -- true if contained bi-crossing
 function M._gitgraph(data, opt, sym, fields)
-  local ITEM_HGS = highlights.ITEM_HGS
-  local BRANCH_HGS = highlights.BRANCH_HGS
+  local ITEM_HGS = require('gitgraph.highlights').ITEM_HGS
+  local BRANCH_HGS = require('gitgraph.highlights').BRANCH_HGS
 
   local NUM_BRANCH_COLORS = #BRANCH_HGS
 
   local found_bi_crossing = false
 
-  -- git graph symbols
-  -- NOTE: We emmy type these to string, we expect them all
-  --       to be set. The only reason the config types are
-  --       string? (i.e potentially nil) is to allow a user to
-  --       pass in only a subset of symbols without being bombarded
-  --       with warnings of missing options.
-  local GVER = sym.GVER ---@type string -- '│'
-  local GHOR = sym.GHOR ---@type string -- '─'
-  local GCLD = sym.GCLD ---@type string -- '╮'
-  local GCRD = sym.GCRD ---@type string -- '╭'
-  local GCLU = sym.GCLU ---@type string -- '╯'
-  local GCRU = sym.GCRU ---@type string -- '╰'
-  local GLRU = sym.GLRU ---@type string -- '┴'
-  local GLRD = sym.GLRD ---@type string -- '┬'
-  local GLUD = sym.GLUD ---@type string -- '┤'
-  local GRUD = sym.GRUD ---@type string -- '├'
+  local GVER = sym.GVER
+  local GHOR = sym.GHOR
+  local GCLD = sym.GCLD
+  local GCRD = sym.GCRD
+  local GCLU = sym.GCLU
+  local GCRU = sym.GCRU
+  local GLRU = sym.GLRU
+  local GLRD = sym.GLRD
+  local GLUD = sym.GLUD
+  local GRUD = sym.GRUD
 
-  local GFORKU = sym.GFORKU ---@type string -- '┼'
-  local GFORKD = sym.GFORKD ---@type string -- '┼'
+  local GFORKU = sym.GFORKU
+  local GFORKD = sym.GFORKD
 
-  local GRUDCD = sym.GRUDCD ---@type string -- '├'
-  local GRUDCU = sym.GRUDCU ---@type string -- '├'
-  local GLUDCD = sym.GLUDCD ---@type string -- '┤'
-  local GLUDCU = sym.GLUDCU ---@type string -- '┤'
+  local GRUDCD = sym.GRUDCD
+  local GRUDCU = sym.GRUDCU
+  local GLUDCD = sym.GLUDCD
+  local GLUDCU = sym.GLUDCU
 
-  local GLRDCL = sym.GLRDCL ---@type string -- '┬'
-  local GLRDCR = sym.GLRDCR ---@type string -- '┬'
-  local GLRUCL = sym.GLRUCL ---@type string -- '┴'
-  local GLRUCR = sym.GLRUCR ---@type string -- '┴'
+  local GLRDCL = sym.GLRDCL
+  local GLRDCR = sym.GLRDCR
+  local GLRUCL = sym.GLRUCL
+  local GLRUCR = sym.GLRUCR
 
-  local GRCM = sym.commit ---@type string
-  local GMCM = sym.merge_commit ---@type string
-  local GRCME = sym.commit_end ---@type string
-  local GMCME = sym.merge_commit_end ---@type string
-
-  -- opt.pretty = true
+  local GRCM = sym.commit
+  local GMCM = sym.merge_commit
+  local GRCME = sym.commit_end
+  local GMCME = sym.merge_commit_end
 
   GFORKU = opt.pretty and '⓵' or GFORKU -- '┼'
   GFORKD = opt.pretty and '⓴' or GFORKD -- '┼'
@@ -115,16 +106,9 @@ function M._gitgraph(data, opt, sym, fields)
   -- local git_cmd = [[git log --all --pretty='format:%s%x00%aD%x00%H%x00%P']]
 
   ---@class I.Row
-  ---@field i integer
   ---@field cells I.Cell[]
   ---@field commit I.Commit? -- there's a single comit for every even "second"
 
-  -- TODO: make this into a proper class OO
-  --       should have the following methods
-  --       - hash : would return the commit hash or nil if cell is not a commit
-  --       - conn : would return the connector symbol or nil if cell is not a connector
-  --       - str  : would return the string representation
-  --
   ---@class I.Cell
   ---@field is_commit boolean? -- when true this cell is a real commit
   ---@field commit I.Commit? -- a cell is associated with a commit, but the empty column gaps don't have them
@@ -180,15 +164,9 @@ function M._gitgraph(data, opt, sym, fields)
 
   do
     local start = os.clock()
-    -- populate children
-    -- for _, c in pairs(commits) do
-    -- NOTE: you want to be very careful here with the order
-    --       keep in mind that `pairs` does not keep an order
-    --       while `ipairs` does keep an order
     for _, h in ipairs(hashes) do
       local c = commits[h]
 
-      -- children
       for _, h in ipairs(c.parents) do
         local p = commits[h]
         if p then
@@ -227,7 +205,7 @@ function M._gitgraph(data, opt, sym, fields)
     ---@return I.Cell[]
     local function propagate(cells)
       local new_cells = {}
-      for _, cell in ipairs(graph[#graph].cells) do
+      for _, cell in ipairs(cells) do
         if cell.connector then
           new_cells[#new_cells + 1] = { connector = ' ' }
         elseif cell.commit then
@@ -304,8 +282,7 @@ function M._gitgraph(data, opt, sym, fields)
           rowc[j + 1] = { connector = ' ' }
         end
 
-        local row_idx = #graph + 1
-        graph[row_idx] = { i = row_idx, cells = rowc, commit = c }
+        graph[#graph + 1] = { cells = rowc, commit = c }
       end
 
       if i < #sorted_commits then
@@ -427,8 +404,7 @@ function M._gitgraph(data, opt, sym, fields)
               reserve_remainder(rem_parents)
             end
 
-            local row_idx = #graph + 1
-            graph[row_idx] = { i = row_idx, cells = rowc }
+            graph[#graph + 1] = { cells = rowc }
 
             -- handle bi-connector rows
             local is_bi_crossing, bi_crossing_safely_resolveable = utils.get_is_bi_crossing(graph, next_commit, #graph)
@@ -455,8 +431,7 @@ function M._gitgraph(data, opt, sym, fields)
                 rowc[i] = { connector = ' ' }
               end
             end
-            local row_idx = #graph + 1
-            graph[row_idx] = { i = row_idx, cells = rowc }
+            graph[#graph + 1] = { cells = rowc }
           end
         end
       end
@@ -507,7 +482,7 @@ function M._gitgraph(data, opt, sym, fields)
     ---@param row I.Row
     ---@return string
     local function row_to_str(row)
-      local row_str = ''
+      local row_strs = {}
       for j = 1, #row.cells do
         local cell = row.cells[j]
         if cell.connector then
@@ -516,15 +491,15 @@ function M._gitgraph(data, opt, sym, fields)
           assert(cell.commit)
           cell.symbol = commit_cell_symb(cell)
         end
-
-        row_str = row_str .. cell.symbol
+        row_strs[#row_strs + 1] = cell.symbol
       end
-      return row_str
+      return table.concat(row_strs)
     end
 
     ---@param row I.Row
+    ---@param row_idx integer
     ---@return I.Highlight[]
-    local function row_to_highlights(row)
+    local function row_to_highlights(row, row_idx)
       local row_hls = {}
       local offset = 0
 
@@ -538,7 +513,7 @@ function M._gitgraph(data, opt, sym, fields)
 
         if cell.commit then
           local hg = 'GitGraphBranch' .. tostring(j % NUM_BRANCH_COLORS + 1)
-          row_hls[#row_hls + 1] = { hg = hg, row = row.i, start = start, stop = stop }
+          row_hls[#row_hls + 1] = { hg = hg, row = row_idx, start = start, stop = stop }
         elseif cell.symbol == GHOR then
           -- take color from first right cell that attaches to this connector
           for k = j + 1, #row.cells do
@@ -562,7 +537,7 @@ function M._gitgraph(data, opt, sym, fields)
 
             if rcell.commit and vim.tbl_contains(continuations, rcell.symbol) then
               local hg = 'GitGraphBranch' .. tostring(k % NUM_BRANCH_COLORS + 1)
-              row_hls[#row_hls + 1] = { hg = hg, row = row.i, start = start, stop = stop }
+              row_hls[#row_hls + 1] = { hg = hg, row = row_idx, start = start, stop = stop }
               break
             end
           end
@@ -574,27 +549,27 @@ function M._gitgraph(data, opt, sym, fields)
     ---@param row I.Row
     ---@return string
     local function row_to_test(row)
-      local row_str = ''
+      local row_strs = {}
 
       for i = 1, #row.cells do
         local cell = row.cells[i]
         if cell.connector then
-          row_str = row_str .. cell.connector
+          row_strs[#row_strs + 1] = cell.connector
         else
           assert(cell.commit)
           local symbol = cell.commit.msg
           symbol = cell.emphasis and symbol:lower() or symbol
-          row_str = row_str .. symbol
+          row_strs[#row_strs + 1] = symbol
         end
       end
 
-      return row_str
+      return table.concat(row_strs)
     end
 
     ---@param row I.Row
     ---@return string
     local function row_to_debg(row)
-      local row_str = ''
+      local row_strs = {}
       for i = 1, #row.cells do
         local cell = row.cells[i]
         local symbol = ' '
@@ -602,9 +577,9 @@ function M._gitgraph(data, opt, sym, fields)
           symbol = cell.commit.msg
           symbol = cell.emphasis and symbol:lower() or symbol
         end
-        row_str = row_str .. symbol
+        row_strs[#row_strs + 1] = symbol
       end
-      return row_str
+      return table.concat(row_strs)
     end
 
     local width = 0
@@ -733,7 +708,7 @@ function M._gitgraph(data, opt, sym, fields)
           -- row_str = row_str:gsub('%s*$', '')
         end
 
-        for _, hl in ipairs(row_to_highlights(proper_row)) do
+        for _, hl in ipairs(row_to_highlights(proper_row, idx)) do
           highlights[#highlights + 1] = hl
         end
       end
@@ -782,7 +757,7 @@ function M._gitgraph(data, opt, sym, fields)
     local num_emphasized = count_emph(graph[i].cells)
 
     -- vertical connections
-    for j = 1, #row.cells do
+    for j = 1, #row.cells, 2 do
       local this = graph[i].cells[j]
       local below = graph[i + 1].cells[j]
 
@@ -836,7 +811,7 @@ function M._gitgraph(data, opt, sym, fields)
       -- row is a commit row without a connector row following it
       assert(#graph % 2 == 1)
       local last_row = graph[#graph]
-      for j = 1, #last_row.cells do
+      for j = 1, #last_row.cells, 2 do
         local cell = last_row.cells[j]
         if cell.commit and not cell.is_commit then
           cell.connector = GVER
@@ -849,7 +824,7 @@ function M._gitgraph(data, opt, sym, fields)
     -- a stopped connector is one that has a void cell below it
     --
     local stopped = {}
-    for j = 1, #row.cells do
+    for j = 1, #row.cells, 2 do
       local this = graph[i].cells[j]
       local below = graph[i + 1].cells[j]
       if not this.connector and (not below or below.connector == ' ') then
@@ -885,7 +860,7 @@ function M._gitgraph(data, opt, sym, fields)
     do
       local low = #row.cells
       local high = 1
-      for j = 1, #row.cells do
+      for j = 1, #row.cells, 2 do
         local c = row.cells[j]
         if c.emphasis then
           if j > high then
@@ -928,20 +903,20 @@ function M._gitgraph(data, opt, sym, fields)
   -- however two of them are the vertical and horizontal connections
   -- that have already been taken care of
   --
-  for i = 1, #graph do
-    -- we assert that our cells know associated commits when
-    -- appropriate
-    local cells = graph[i].cells
-    for _, cell in ipairs(cells) do
-      local con = cell.connector
-      if con ~= ' ' and con ~= GHOR then
-        if not cell.commit then
-          print('bad cell:', vim.inspect(cell))
-        end
-        -- assert(cell.commit, 'expected commit')
-      end
-    end
-  end
+
+  local symb_map = {
+    -- two neighbors (no straights)
+    -- - 8421
+    [10] = GCLU, -- '1010'
+    [9] = GCLD, -- '1001'
+    [6] = GCRU, -- '0110'
+    [5] = GCRD, -- '0101'
+    -- three neighbors
+    [14] = GLRU, -- '1110'
+    [13] = GLRD, -- '1101'
+    [11] = GLUD, -- '1011'
+    [7] = GRUD, -- '0111'
+  }
 
   for i = 2, #graph, 2 do
     local row = graph[i]
@@ -950,7 +925,7 @@ function M._gitgraph(data, opt, sym, fields)
 
     -- local is_bi_crossing = get_is_bi_crossing(graph, i)
 
-    for j = 1, #row.cells do
+    for j = 1, #row.cells, 2 do
       local this = row.cells[j]
 
       if this.connector == GVER then
@@ -971,28 +946,15 @@ function M._gitgraph(data, opt, sym, fields)
       -- number of neighbors
       local nn = 0
 
-      local symb_id = ''
-      for _, b in ipairs({ l, r, u, d }) do
+      local symb_n = 0
+      for i, b in ipairs({ l, r, u, d }) do
         if b then
           nn = nn + 1
-          symb_id = symb_id .. '1'
-        else
-          symb_id = symb_id .. '0'
+          symb_n = symb_n + bit.lshift(1, 4 - i)
         end
       end
 
-      local symbol = ({
-        -- two neighbors (no straights)
-        ['1010'] = GCLU,
-        ['1001'] = GCLD,
-        ['0110'] = GCRU,
-        ['0101'] = GCRD,
-        -- three neighbors
-        ['1110'] = GLRU,
-        ['1101'] = GLRD,
-        ['1011'] = GLUD,
-        ['0111'] = GRUD,
-      })[symb_id] or '?'
+      local symbol = symb_map[symb_n] or '?'
 
       if i == #graph and symbol == '?' then
         symbol = GVER

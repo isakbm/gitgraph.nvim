@@ -30,15 +30,31 @@ function M.draw(options, args)
 end
 
 --- Tests the gitgraph plugin
----@return string[]
----@return boolean
 function M.test()
-  return require('gitgraph.tests').run_tests(M.config.symbols, M.config.format.fields)
+  local lines, _failure = require('gitgraph.tests').run_tests(M.config.symbols, M.config.format.fields)
+
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_win_set_buf(0, buf)
+
+  vim.api.nvim_buf_set_lines(buf, 0, #lines, false, lines)
+
+  local cursor_line = #lines
+  vim.api.nvim_win_set_cursor(0, { cursor_line, 0 })
+  vim.api.nvim_set_option_value('modifiable', false, { buf = buf })
 end
 
 --- Draws a random gitgraph
 function M.random()
-  return require('gitgraph.tests').run_random(M.config.symbols, M.config.format.fields)
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_win_set_buf(0, buf)
+
+  local lines = require('gitgraph.tests').run_random(M.config.symbols, M.config.format.fields)
+
+  vim.api.nvim_buf_set_lines(buf, 0, #lines, false, lines)
+
+  local cursor_line = 1
+  vim.api.nvim_win_set_cursor(0, { cursor_line, 0 })
+  vim.api.nvim_set_option_value('modifiable', false, { buf = buf })
 end
 
 return M

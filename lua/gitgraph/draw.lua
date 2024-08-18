@@ -34,17 +34,11 @@ function M.draw(config, options, args)
   assert(buf)
   vim.api.nvim_win_set_buf(0, buf)
 
-  -- make modifiable
-  vim.api.nvim_set_option_value('modifiable', true, { buf = buf })
+  vim.api.nvim_set_option_value('modifiable', true, { buf = buf }) -- make modifiable
+  vim.api.nvim_set_option_value('buflisted', false, { buf = buf }) -- unlisted
+  vim.api.nvim_set_option_value('wrap', false, { scope = 'local' }) -- turn off linewrap
 
-  -- unlisted
-  vim.api.nvim_set_option_value('buflisted', false, { buf = buf })
-
-  -- turn off linewrap
-  vim.api.nvim_set_option_value('wrap', false, { scope = 'local' })
-
-  -- clear highlights
-  vim.api.nvim_buf_clear_namespace(buf, -1, 0, -1)
+  vim.api.nvim_buf_clear_namespace(buf, -1, 0, -1) -- clear highlights
 
   -- clear
   do
@@ -61,8 +55,9 @@ function M.draw(config, options, args)
   local start = os.clock()
   -- put graph data in buffer
   do
-    -- text
-    vim.api.nvim_buf_set_lines(buf, 0, #lines, false, lines)
+    vim.api.nvim_buf_set_lines(buf, 0, #lines, false, lines) -- text
+
+    -- highlights
 
     local function high()
       for _, hl in ipairs(highlights) do
@@ -71,7 +66,6 @@ function M.draw(config, options, args)
       end
     end
 
-    -- highlights
     local co = coroutine.create(high)
 
     local function wait_poll()

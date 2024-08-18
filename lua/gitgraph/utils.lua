@@ -13,7 +13,6 @@ function M.resolve_bi_crossing(graph, next)
   local this_row = graph[#graph]
   assert(prev_row and this_row, 'expecting two prior rows due to bi-connector')
 
-  ---@param row I.Row
   --- example of what this does
   ---
   --- input:
@@ -48,8 +47,8 @@ function M.resolve_bi_crossing(graph, next)
     return ctr
   end
 
-  local prev_rep_ctr = void_repeats(prev_row)
-  local this_rep_ctr = void_repeats(this_row)
+  void_repeats(prev_row)
+  void_repeats(this_row)
 
   -- we must also take care when the prev prev has a repeat where
   -- the repeat is not the direct parent of its child
@@ -289,10 +288,10 @@ function M.get_commit_from_row(graph, r)
   return commit
 end
 
-function M.apply_buffer_options(buf_id)
-  vim.api.nvim_buf_set_option(buf_id, 'modifiable', false)
+function M.apply_buffer_options(buf)
+  vim.api.nvim_set_option_value('modifiable', false, { buf = buf })
   vim.cmd('set filetype=gitgraph')
-  vim.api.nvim_buf_set_name(buf_id, 'GitGraph')
+  vim.api.nvim_buf_set_name(buf, 'GitGraph')
 
   local options = {
     'foldcolumn=0',
