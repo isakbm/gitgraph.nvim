@@ -35,7 +35,7 @@ function M.gitgraph(config, options, args)
   return graph, lines, highlights, head_loc
 end
 
----@param data I.RawCommit[]
+---@param raw_commits I.RawCommit[]
 ---@param opt I.DrawOptions
 ---@param sym I.GGSymbols
 ---@param fields I.GGVarName[]
@@ -44,7 +44,7 @@ end
 ---@return I.Highlight[]
 ---@return integer? -- head location
 ---@return boolean -- true if contained bi-crossing
-function M._gitgraph(data, opt, sym, fields)
+function M._gitgraph(raw_commits, opt, sym, fields)
   local ITEM_HGS = require('gitgraph.highlights').ITEM_HGS
   local BRANCH_HGS = require('gitgraph.highlights').BRANCH_HGS
 
@@ -118,54 +118,42 @@ function M._gitgraph(data, opt, sym, fields)
 
   ---@class I.Commit
   ---@field hash string
-  ---@field is_void boolean -- used for the "reservation" logic ... a bit confusing I have to admit
   ---@field msg string
   ---@field branch_names string[]
   ---@field tags string[]
   ---@field debug string?
   ---@field author_date string
   ---@field author_name string
-  ---@field explored boolean
   ---@field i integer
   ---@field j integer
   ---@field parents string[]
   ---@field children string[]
 
-  ---@type table<string, I.Commit>
-  local commits = {}
+  local commits = {} ---@type table<string, I.Commit>
+  local sorted_commits = {} ---@type string[]
 
-  ---@type I.Commit[]
-  local sorted_commits = {}
-
-  ---@type string[]
-  local hashes = {}
-
-  for _, dc in ipairs(data) do
-    hashes[#hashes + 1] = dc.hash
-
+  for _, rc in ipairs(raw_commits) do
     local commit = {
-      explored = false,
-      msg = dc.msg,
-      branch_names = dc.branch_names,
-      tags = dc.tags,
-      author_date = dc.author_date,
-      author_name = dc.author_name,
-      hash = dc.hash,
+      msg = rc.msg,
+      branch_names = rc.branch_names,
+      tags = rc.tags,
+      author_date = rc.author_date,
+      author_name = rc.author_name,
+      hash = rc.hash,
       i = -1,
       j = -1,
-      parents = dc.parents,
-      is_void = false,
+      parents = rc.parents,
       children = {},
     }
 
-    sorted_commits[#sorted_commits + 1] = commit
-    commits[dc.hash] = commit
+    sorted_commits[#sorted_commits + 1] = commit.hash
+    commits[rc.hash] = commit
   end
 
   do
     local start = os.clock()
-    for _, h in ipairs(hashes) do
-      local c = commits[h]
+    for _, c_hash in ipairs(sorted_commits) do
+      local c = commits[c_hash]
 
       for _, h in ipairs(c.parents) do
         local p = commits[h]
@@ -176,9 +164,7 @@ function M._gitgraph(data, opt, sym, fields)
           commits[h] = {
             hash = h,
             author_name = 'virtual',
-            is_void = false,
             msg = 'virtual parent',
-            explored = false,
             author_date = 'unknown',
             parents = {},
             children = { c.hash },
@@ -195,64 +181,64 @@ function M._gitgraph(data, opt, sym, fields)
     log.info('children dur:', dur * 1000, 'ms')
   end
 
-  ---@param sorted_commits I.Commit[]
+  ---@param cells I.Cell[]
+  ---@return I.Cell[]
+  local function propagate(cells)
+    local new_cells = {}
+    for _, cell in ipairs(cells) do
+      if cell.connector then
+        new_cells[#new_cells + 1] = { connector = ' ' }
+      elseif cell.commit then
+        assert(cell.commit)
+        new_cells[#new_cells + 1] = { commit = cell.commit }
+      else
+        new_cells[#new_cells + 1] = { connector = ' ' }
+      end
+    end
+    return new_cells
+  end
+
+  ---@param cells I.Cell[]
+  ---@param hash string
+  ---@param start integer?
+  ---@return integer?
+  local function find(cells, hash, start)
+    local start = start or 1
+    for idx = start, #cells, 2 do
+      local c = cells[idx]
+      if c.commit and c.commit.hash == hash then
+        return idx
+      end
+    end
+    return nil
+  end
+
+  ---@param cells I.Cell[]
+  ---@param start integer?
+  ---@return integer
+  local function next_vacant_j(cells, start)
+    local start = start or 1
+    for i = start, #cells, 2 do
+      local cell = cells[i]
+      if cell.connector == ' ' then
+        return i
+      end
+    end
+    return #cells + 1
+  end
+
+  ---@param commits table<string, I.Commit>
+  ---@param sorted_commits string[]
   ---@return I.Row[]
-  local function straight_j(sorted_commits)
-    ---@type I.Row[]
-    local graph = {}
+  local function straight_j(commits, sorted_commits)
+    local graph = {} ---@type I.Row[]
 
-    ---@param cells I.Cell[]
-    ---@return I.Cell[]
-    local function propagate(cells)
-      local new_cells = {}
-      for _, cell in ipairs(cells) do
-        if cell.connector then
-          new_cells[#new_cells + 1] = { connector = ' ' }
-        elseif cell.commit then
-          assert(cell.commit)
-          new_cells[#new_cells + 1] = { commit = cell.commit }
-        else
-          new_cells[#new_cells + 1] = { connector = ' ' }
-        end
-      end
-      return new_cells
-    end
+    for i, c_hash in ipairs(sorted_commits) do
+      local c = commits[c_hash]
 
-    ---@param cells I.Cell[]
-    ---@param hash string
-    ---@param start integer?
-    ---@return integer?
-    local function find(cells, hash, start)
-      local start = start or 1
-      for idx = start, #cells do
-        local c = cells[idx]
-        if c.commit and c.commit.hash == hash then
-          return idx
-        end
-      end
-      return nil
-    end
+      local rowc = {} ---@type I.Cell[]
 
-    ---@param cells I.Cell[]
-    ---@param start integer?
-    ---@return integer
-    local function next_vacant_j(cells, start)
-      local start = start or 1
-      for i = start, #cells, 2 do
-        local cell = cells[i]
-        if cell.connector == ' ' then
-          return i
-        end
-      end
-      return #cells + 1
-    end
-
-    for i, c in ipairs(sorted_commits) do
-      ---@type I.Cell[]
-      local rowc = {}
-
-      ---@type integer?
-      local j = nil
+      local j = nil ---@type integer?
 
       do
         --
@@ -331,7 +317,7 @@ function M._gitgraph(data, opt, sym, fields)
 
             -- we start by peeking at next commit and seeing if it is one of our parents
             -- we only do this if one of our propagating branches is already destined for this commit
-            local next_commit = sorted_commits[i + 1]
+            local next_commit = commits[sorted_commits[i + 1]]
             ---@type I.Cell?
             local tracker = nil
             if next_commit then
@@ -414,7 +400,7 @@ function M._gitgraph(data, opt, sym, fields)
               found_bi_crossing = true
             end
 
-            local next = sorted_commits[i + 1]
+            local next = commits[sorted_commits[i + 1]]
 
             -- if get_is_bi_crossing(graph, next_commit, #graph) then
             if is_bi_crossing and bi_crossing_safely_resolveable then
@@ -425,7 +411,7 @@ function M._gitgraph(data, opt, sym, fields)
             -- ... a different family ... see test `different family`
 
             -- we must remove the already propagated connector for the current commit since it has no parents
-            for i = 1, #rowc do
+            for i = 1, #rowc, 2 do
               local cell = rowc[i]
               if cell.commit and cell.commit.hash == c.hash then
                 rowc[i] = { connector = ' ' }
@@ -440,7 +426,7 @@ function M._gitgraph(data, opt, sym, fields)
     return graph
   end
 
-  local graph = straight_j(sorted_commits)
+  local graph = straight_j(commits, sorted_commits)
 
   ---@class I.DrawOptions
   ---@field mode? 'debug' | 'test'
