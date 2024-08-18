@@ -338,16 +338,29 @@ end
 --- note that this method was sadly neede since there's some strange bug with lua's handle:close?
 --- it doesn't get the exit code correctly by itself?
 function M.check_cmd(cmd)
-  local res = io.popen(cmd .. ' 2>&1; echo $?')
+  local is_windows = package.config:sub(1, 1) == '\\'
+  local final_cmd = cmd
+
+  if is_windows then
+    final_cmd = final_cmd .. ' && echo 0 || echo 1'
+  else
+    final_cmd = final_cmd .. ' 2>&1; echo $?'
+  end
+
+  local res = io.popen(final_cmd)
   if not res then
     return true
   end
-  local last_line = '1'
+
+  local output, last_line = {}, '1'
   for line in res:lines() do
-    last_line = line
+    table.insert(output, line)
   end
+  last_line = output[#output] -- in both cases, the last line contains the exit status
+
   res:close()
-  return last_line ~= '0'
+
+  return vim.trim(last_line or '') ~= '0'
 end
 
 return M
