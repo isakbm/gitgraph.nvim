@@ -102,12 +102,9 @@ function M._gitgraph(raw_commits, opt, sym, fields)
   -- PERFORMANCE
   -- TODO: look at https://www.lua.org/gems/sample.pdf
 
-  --
-  -- local git_cmd = [[git log --all --pretty='format:%s%x00%aD%x00%H%x00%P']]
-
   ---@class I.Row
   ---@field cells I.Cell[]
-  ---@field commit I.Commit? -- there's a single comit for every even "second"
+  ---@field commit I.Commit? -- there's a single comit for every even row
 
   ---@class I.Cell
   ---@field is_commit boolean? -- when true this cell is a real commit
@@ -227,6 +224,185 @@ function M._gitgraph(raw_commits, opt, sym, fields)
     return #cells + 1
   end
 
+  --- returns the generated row and the integer (j) location of the commit
+  ---@param c I.Commit
+  ---@param prev_row I.Row?
+  ---@return I.Row, integer
+  local function generate_commit_row(c, prev_row)
+    local j = nil ---@type integer?
+
+    local rowc = {} ---@type I.Cell[]
+
+    if prev_row then
+      rowc = propagate(prev_row.cells)
+      j = find(prev_row.cells, c.hash)
+    end
+
+    -- if reserved location use it
+    if j then
+      c.j = j
+      rowc[j] = { commit = c, is_commit = true }
+
+      -- clear any supurfluous reservations
+      for k = j + 1, #rowc do
+        local v = rowc[k]
+        if v.commit and v.commit.hash == c.hash then
+          rowc[k] = { connector = ' ' }
+        end
+      end
+    else
+      j = next_vacant_j(rowc)
+      c.j = j
+      rowc[j] = { commit = c, is_commit = true }
+      rowc[j + 1] = { connector = ' ' }
+    end
+
+    return { cells = rowc, commit = c }, j
+  end
+
+  ---@param prev_commit_row I.Row
+  ---@param prev_connector_row I.Row
+  ---@param commit_row I.Row
+  ---@param commit_loc integer
+  ---@param curr_commit I.Commit
+  ---@param next_commit I.Commit?
+  ---@return I.Row
+  local function generate_connector_row(prev_commit_row, prev_connector_row, commit_row, commit_loc, curr_commit, next_commit)
+    -- connector row (reservation row)
+    --
+    -- first we propagate
+    local connector_cells = propagate(commit_row.cells)
+
+    -- connector row
+    --
+    -- now we proceed to add the parents of the commit we just added
+    if #curr_commit.parents > 0 then
+      ---@param rem_parents string[]
+      local function reserve_remainder(rem_parents)
+        --
+        -- reserve the rest of the parents in slots to the right of us
+        --
+        -- ... another alternative is to reserve rest of the parents of c if they have not already been reserved
+        -- for i = 2, #c.parents do
+        for _, h in ipairs(rem_parents) do
+          local j = find(commit_row.cells, h, commit_loc)
+          if not j then
+            local j = next_vacant_j(connector_cells, commit_loc)
+            connector_cells[j] = { commit = commits[h], emphasis = true }
+            connector_cells[j + 1] = { connector = ' ' }
+          else
+            connector_cells[j].emphasis = true
+          end
+        end
+      end
+
+      -- we start by peeking at next commit and seeing if it is one of our parents
+      -- we only do this if one of our propagating branches is already destined for this commit
+      ---@type I.Cell?
+      local tracker = nil
+      if next_commit then
+        for _, cell in ipairs(connector_cells) do
+          if cell.commit and cell.commit.hash == next_commit.hash then
+            tracker = cell
+            break
+          end
+        end
+      end
+
+      local next_p_idx = nil -- default to picking first parent
+      if tracker and next_commit then
+        -- this loop updates next_p_idx to the next commit if they are identical
+        for k, h in ipairs(curr_commit.parents) do
+          if h == next_commit.hash then
+            next_p_idx = k
+            break
+          end
+        end
+      end
+
+      -- next_p_idx = nil
+
+      -- add parents
+      if next_p_idx then
+        assert(tracker)
+        -- if next commit is our parent then we do some complex logic
+        if #curr_commit.parents == 1 then
+          -- simply place parent at our location
+          connector_cells[commit_loc].commit = commits[curr_commit.parents[1]]
+          connector_cells[commit_loc].emphasis = true
+        else
+          -- void the cell at our location (will be replaced by our parents in a moment)
+          connector_cells[commit_loc] = { connector = ' ' }
+
+          -- put emphasis on tracker for the special parent
+          tracker.emphasis = true
+
+          -- only reserve parents that are different from next commit
+          ---@type string[]
+          local rem_parents = {}
+          for k, h in ipairs(curr_commit.parents) do
+            if k ~= next_p_idx then
+              rem_parents[#rem_parents + 1] = h
+            end
+          end
+
+          assert(#rem_parents == #curr_commit.parents - 1, 'unexpected amount of rem parents')
+          reserve_remainder(rem_parents)
+
+          -- we fill this with the next commit if it is empty, a bit hacky
+          if connector_cells[commit_loc].connector == ' ' then
+            connector_cells[commit_loc].commit = tracker.commit
+            connector_cells[commit_loc].emphasis = true
+            connector_cells[commit_loc].connector = nil
+            tracker.emphasis = false
+          end
+        end
+      else
+        -- simply add first parent at our location and then reserve the rest
+        connector_cells[commit_loc].commit = commits[curr_commit.parents[1]]
+        connector_cells[commit_loc].emphasis = true
+
+        local rem_parents = {}
+        for k = 2, #curr_commit.parents do
+          rem_parents[#rem_parents + 1] = curr_commit.parents[k]
+        end
+
+        reserve_remainder(rem_parents)
+      end
+
+      local connector_row = { cells = connector_cells } ---@type I.Row
+
+      -- handle bi-connector rows
+      local is_bi_crossing, bi_crossing_safely_resolveable = utils.get_is_bi_crossing(commit_row, connector_row, next_commit)
+
+      -- used for troubleshooting and tracking complexity of tests
+      if is_bi_crossing then
+        found_bi_crossing = true
+      end
+
+      if is_bi_crossing and bi_crossing_safely_resolveable and next_commit then
+        utils.resolve_bi_crossing(prev_commit_row, prev_connector_row, commit_row, connector_row, next_commit)
+      end
+
+      return connector_row
+    else
+      -- if we're here then it means that this commit has no common ancestors with other commits
+      -- ... a different family ... see test `different family`
+
+      -- we must remove the already propagated connector for the current commit since it has no parents
+      for i = 1, #connector_cells, 2 do
+        local cell = connector_cells[i]
+        if cell.commit and cell.commit.hash == curr_commit.hash then
+          connector_cells[i] = { connector = ' ' }
+        end
+      end
+
+      local connector_row = { cells = connector_cells }
+
+      return connector_row
+    end
+  end
+
   ---@param commits table<string, I.Commit>
   ---@param sorted_commits string[]
   ---@return I.Row[]
@@ -234,192 +410,23 @@ function M._gitgraph(raw_commits, opt, sym, fields)
     local graph = {} ---@type I.Row[]
 
     for i, c_hash in ipairs(sorted_commits) do
-      local c = commits[c_hash]
+      -- get the input parameters
+      local curr_commit = commits[c_hash]
+      local next_commit = commits[sorted_commits[i + 1]]
+      local prev_commit_row = graph[#graph - 1]
+      local prev_connector_row = graph[#graph]
 
-      local rowc = {} ---@type I.Cell[]
-
-      local j = nil ---@type integer?
-
-      do
-        --
-        -- commit row
-        --
-        if #graph > 0 then
-          rowc = propagate(graph[#graph].cells)
-          j = find(graph[#graph].cells, c.hash)
-        end
-
-        -- if reserved location use it
-        if j then
-          c.j = j
-          rowc[j] = { commit = c, is_commit = true }
-
-          -- clear any supurfluous reservations
-          for k = j + 1, #rowc do
-            local v = rowc[k]
-            if v.commit and v.commit.hash == c.hash then
-              rowc[k] = { connector = ' ' }
-            end
-          end
-        else
-          j = next_vacant_j(rowc)
-          c.j = j
-          rowc[j] = { commit = c, is_commit = true }
-          rowc[j + 1] = { connector = ' ' }
-        end
-
-        graph[#graph + 1] = { cells = rowc, commit = c }
+      -- generate commit and connector row for the current commit
+      local commit_row, commit_loc = generate_commit_row(curr_commit, prev_connector_row)
+      local connector_row = nil ---@type I.Row
+      if i < #sorted_commits then
+        connector_row = generate_connector_row(prev_commit_row, prev_connector_row, commit_row, commit_loc, curr_commit, next_commit)
       end
 
-      if i < #sorted_commits then
-        -- connector row (reservation row)
-        --
-        -- first we propagate
-        local rowc = propagate(graph[#graph].cells)
-
-        local num_active = 0
-        for _, cell in ipairs(rowc) do
-          if cell.commit then
-            num_active = num_active + 1
-          end
-        end
-
-        if num_active > 1 or #c.parents > 0 then
-          --
-          -- connector row
-          --
-          -- at this point we should have a valid position for our commit (we have 'inserted' it)
-          assert(j)
-          local our_loc = j
-
-          -- now we proceed to add the parents of the commit we just added
-          --
-
-          if #c.parents > 0 then
-            ---@param rem_parents string[]
-            local function reserve_remainder(rem_parents)
-              --
-              -- reserve the rest of the parents in slots to the right of us
-              --
-              -- ... another alternative is to reserve rest of the parents of c if they have not already been reserved
-              -- for i = 2, #c.parents do
-              for _, h in ipairs(rem_parents) do
-                local j = find(graph[#graph].cells, h, our_loc)
-                if not j then
-                  local j = next_vacant_j(rowc, our_loc)
-                  rowc[j] = { commit = commits[h], emphasis = true }
-                  rowc[j + 1] = { connector = ' ' }
-                else
-                  rowc[j].emphasis = true
-                end
-              end
-            end
-
-            -- we start by peeking at next commit and seeing if it is one of our parents
-            -- we only do this if one of our propagating branches is already destined for this commit
-            local next_commit = commits[sorted_commits[i + 1]]
-            ---@type I.Cell?
-            local tracker = nil
-            if next_commit then
-              for _, cell in ipairs(rowc) do
-                if cell.commit and cell.commit.hash == next_commit.hash then
-                  tracker = cell
-                  break
-                end
-              end
-            end
-
-            local next_p_idx = nil -- default to picking first parent
-            if tracker and next_commit then
-              -- this loop updates next_p_idx to the next commit if they are identical
-              for k, h in ipairs(c.parents) do
-                if h == next_commit.hash then
-                  next_p_idx = k
-                  break
-                end
-              end
-            end
-
-            -- next_p_idx = nil
-
-            -- add parents
-            if next_p_idx then
-              assert(tracker)
-              -- if next commit is our parent then we do some complex logic
-              if #c.parents == 1 then
-                -- simply place parent at our location
-                rowc[our_loc].commit = commits[c.parents[1]]
-                rowc[our_loc].emphasis = true
-              else
-                -- void the cell at our location (will be replaced by our parents in a moment)
-                rowc[our_loc] = { connector = ' ' }
-
-                -- put emphasis on tracker for the special parent
-                tracker.emphasis = true
-
-                -- only reserve parents that are different from next commit
-                ---@type string[]
-                local rem_parents = {}
-                for k, h in ipairs(c.parents) do
-                  if k ~= next_p_idx then
-                    rem_parents[#rem_parents + 1] = h
-                  end
-                end
-
-                assert(#rem_parents == #c.parents - 1, 'unexpected amount of rem parents')
-                reserve_remainder(rem_parents)
-
-                -- we fill this with the next commit if it is empty, a bit hacky
-                if rowc[our_loc].connector == ' ' then
-                  rowc[our_loc].commit = tracker.commit
-                  rowc[our_loc].emphasis = true
-                  rowc[our_loc].connector = nil
-                  tracker.emphasis = false
-                end
-              end
-            else
-              -- simply add first parent at our location and then reserve the rest
-              rowc[our_loc].commit = commits[c.parents[1]]
-              rowc[our_loc].emphasis = true
-
-              local rem_parents = {}
-              for k = 2, #c.parents do
-                rem_parents[#rem_parents + 1] = c.parents[k]
-              end
-
-              reserve_remainder(rem_parents)
-            end
-
-            graph[#graph + 1] = { cells = rowc }
-
-            -- handle bi-connector rows
-            local is_bi_crossing, bi_crossing_safely_resolveable = utils.get_is_bi_crossing(graph, next_commit, #graph)
-
-            -- used for troubleshooting and tracking complexity of tests
-            if is_bi_crossing then
-              found_bi_crossing = true
-            end
-
-            local next = commits[sorted_commits[i + 1]]
-
-            -- if get_is_bi_crossing(graph, next_commit, #graph) then
-            if is_bi_crossing and bi_crossing_safely_resolveable then
-              utils.resolve_bi_crossing(graph, next)
-            end
-          else
-            -- if we're here then it means that this commit has no common ancestors with other commits
-            -- ... a different family ... see test `different family`
-
-            -- we must remove the already propagated connector for the current commit since it has no parents
-            for i = 1, #rowc, 2 do
-              local cell = rowc[i]
-              if cell.commit and cell.commit.hash == c.hash then
-                rowc[i] = { connector = ' ' }
-              end
-            end
-            graph[#graph + 1] = { cells = rowc }
-          end
-        end
+      -- write the result
+      graph[#graph + 1] = commit_row
+      if connector_row then
+        graph[#graph + 1] = connector_row
       end
     end
 

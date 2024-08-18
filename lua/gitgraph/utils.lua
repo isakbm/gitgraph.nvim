@@ -1,16 +1,18 @@
 local M = {}
 
 ---@param next I.Commit
----@param graph I.Row[]
-function M.resolve_bi_crossing(graph, next)
+---@param prev_commit_row I.Row
+---@param prev_connector_row I.Row
+---@param commit_row I.Row
+---@param connector_row I.Row
+function M.resolve_bi_crossing(prev_commit_row, prev_connector_row, commit_row, connector_row, next)
   -- if false then
   -- if false then -- get_is_bi_crossing(graph, next_commit, #graph) then
   -- print 'we have a bi crossing'
-  assert(next)
   -- void all repeated reservations of `next` from
   -- this and the previous row
-  local prev_row = graph[#graph - 1]
-  local this_row = graph[#graph]
+  local prev_row = commit_row
+  local this_row = connector_row
   assert(prev_row and this_row, 'expecting two prior rows due to bi-connector')
 
   --- example of what this does
@@ -66,8 +68,8 @@ function M.resolve_bi_crossing(graph, next)
   --   B         A              ⓚ         │
   --   a         A              ⓶─────────╯
   --   A                        ⓚ
-  local prev_prev_row = graph[#graph - 2]
-  local prev_prev_prev_row = graph[#graph - 3]
+  local prev_prev_row = prev_connector_row -- graph[#graph - 2]
+  local prev_prev_prev_row = prev_commit_row -- graph[#graph - 3]
   assert(prev_prev_row and prev_prev_prev_row)
   do
     local start_voiding = false
@@ -200,24 +202,24 @@ end
 -- FIXME: need to test if we handle two bi-connectors in succession
 --        correctly
 --
----@param i integer -- the row index
----@param graph I.Row[] -- the row index
----@param next_commit I.Commit -- the next commit
+---@param commit_row I.Row
+---@param connector_row I.Row
+---@param next_commit I.Commit?
 ---@return boolean -- whether or not this is a bi crossing
 ---@return boolean -- whether or not it can be resolved safely by edge lifting
-function M.get_is_bi_crossing(graph, next_commit, i)
-  if i % 2 == 1 then
-    return false, false -- we're not a connector row NOTE: 1 indexing of lua
+function M.get_is_bi_crossing(commit_row, connector_row, next_commit)
+  if not next_commit then
+    return false, false
   end
 
-  local prev = graph[i - 1].commit
+  local prev = commit_row.commit
   assert(prev, 'expected a prev commit')
 
   if #prev.parents < 2 then
     return false, false -- bi-crossings only happen when prev is a merge commit
   end
 
-  local row = graph[i]
+  local row = connector_row
 
   ---@param k integer
   local function interval_upd(x, k)
