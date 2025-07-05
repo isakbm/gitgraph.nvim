@@ -16,6 +16,7 @@ Git Graph plugin for neovim.
 - ✔️ easily configurable highlight groups
 - ✔️ performant scrolling
 - ✔️ easy to follow branch crossings
+- ✔️ dual-pane mode with synchronized scrolling
 ### Future
 - auto updating graph
 - performant load times for large repos
@@ -59,8 +60,46 @@ Git Graph plugin for neovim.
         end,
         desc = "GitGraph - Draw",
       },
+      {
+        "<leader>gd",
+        function()
+          require('gitgraph').draw_dual({}, { all = true, max_count = 5000 })
+        end,
+        desc = "GitGraph - Dual Pane",
+      },
     },
   },
+
+```
+
+## Dual-Pane Mode
+
+GitGraph supports a dual-pane mode that splits the interface into two synchronized windows:
+- **Left pane**: Visual git graph
+- **Right pane**: Commit details (hash, timestamp, author, message, etc.)
+
+### Usage
+
+```vim
+:GitGraphDual [args]
+```
+
+Or programmatically:
+```lua
+require('gitgraph').draw_dual({}, { all = true, max_count = 5000 })
+```
+
+### Dual-Pane Keybindings
+
+| Key | Action |
+|-----|--------|
+| `<Tab>` | Switch between graph and text panes |
+| `<leader>gs` | Toggle scroll synchronization |
+| `<CR>` | Select commit under cursor |
+| `j/k` | Navigate up/down (synchronized) |
+| `h/l` | Horizontal scroll (independent per pane) |
+
+For more details, see [DUAL_PANE.md](DUAL_PANE.md).
 
 ```
 
@@ -123,6 +162,11 @@ For example, use **kitty** branch symbols [more detail](https://github.com/kovid
     GLRUCR = '',
   },
 ```
+
+# Commands
+
+- `:GitGraph [args]` - Open single-pane git graph
+- `:GitGraphDual [args]` - Open dual-pane git graph
 
 # Keymaps
 

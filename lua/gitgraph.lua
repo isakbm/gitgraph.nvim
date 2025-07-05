@@ -29,6 +29,14 @@ function M.draw(options, args)
   return require('gitgraph.draw').draw(M.config, options, args)
 end
 
+--- Draws the gitgraph in dual-pane mode
+---@param options I.DrawOptions
+---@param args I.GitLogArgs
+---@return nil
+function M.draw_dual(options, args)
+  return require('gitgraph.draw_dual').draw(M.config, options, args)
+end
+
 --- Tests the gitgraph plugin
 function M.test()
   local lines, _failure = require('gitgraph.tests').run_tests(M.config.symbols, M.config.format.fields)

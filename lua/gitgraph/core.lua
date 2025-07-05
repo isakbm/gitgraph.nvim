@@ -42,12 +42,38 @@ function M.gitgraph(config, options, args)
   return graph, lines, highlights, head_loc
 end
 
+---@param config I.GGConfig
+---@param options I.DrawOptions
+---@param args I.GitLogArgs
+---@return I.Row[]
+---@return string[]
+---@return string[]
+---@return I.Highlight[]
+---@return I.Highlight[]
+---@return integer?
+function M.gitgraph_dual(config, options, args)
+  --- depends on `git`
+  local data = require('gitgraph.git').git_log_pretty(args, config.format.timestamp)
+
+  --- does the magic
+  local start = os.clock()
+  local graph, graph_lines, text_lines, graph_highlights, text_highlights, head_loc = M._gitgraph_dual(
+    data,
+    options,
+    config.symbols,
+    config.format.fields)
+  local dur = os.clock() - start
+  log.info('_gitgraph_dual dur:', dur * 1000, 'ms')
+
+  return graph, graph_lines, text_lines, graph_highlights, text_highlights, head_loc
+end
+
 ---@param raw_commits I.RawCommit[]
 ---@return table<string, I.Commit>, string[]
 local function process_raw_commits(raw_commits)
   local start = os.clock()
 
-  local commits = {} --- @type table<string, I.Commit>
+  local commits = {}        --- @type table<string, I.Commit>
   local sorted_commits = {} --- @type string[]
 
   for _, rc in ipairs(raw_commits) do
@@ -342,14 +368,14 @@ local function insert_symbols_on_connector_rows(graph, sym)
     -- two neighbors (no straights)
     -- - 8421
     [10] = sym.GCLU, -- '1010'
-    [9] = sym.GCLD, -- '1001'
-    [6] = sym.GCRU, -- '0110'
-    [5] = sym.GCRD, -- '0101'
+    [9] = sym.GCLD,  -- '1001'
+    [6] = sym.GCRU,  -- '0110'
+    [5] = sym.GCRD,  -- '0101'
     -- three neighbors
     [14] = sym.GLRU, -- '1110'
     [13] = sym.GLRD, -- '1101'
     [11] = sym.GLUD, -- '1011'
-    [7] = sym.GRUD, -- '0111'
+    [7] = sym.GRUD,  -- '0111'
   }
 
   for i = 2, #graph, 2 do
@@ -734,6 +760,232 @@ local function graph_to_lines(options, graph, sym, fields, commits)
   return lines, highlights, head_loc
 end
 
+---@param options I.DrawOptions
+---@param graph I.Row[]
+---@param sym I.GGSymbols
+---@param fields string[]
+---@param commits table<string, I.Commit>
+---@return string[]
+---@return string[]
+---@return I.Highlight[]
+---@return I.Highlight[]
+---@return integer?
+local function graph_to_lines_dual(options, graph, sym, fields, commits)
+  local ITEM_HGS = require('gitgraph.highlights').ITEM_HGS
+  local BRANCH_HGS = require('gitgraph.highlights').BRANCH_HGS
+
+  local NUM_BRANCH_COLORS = #BRANCH_HGS
+
+  local start = os.clock()
+
+  ---@type integer?
+  local head_loc = 1
+
+  ---@type string[]
+  local graph_lines = {}
+
+  ---@type string[]
+  local text_lines = {}
+
+  ---@type I.Highlight[]
+  local graph_highlights = {}
+
+  ---@type I.Highlight[]
+  local text_highlights = {}
+
+  ---@param cell I.Cell
+  ---@return string
+  local function commit_cell_symb(cell)
+    assert(cell.is_commit)
+
+    if options.mode == 'debug' then
+      return cell.commit.msg
+    end
+
+    if #cell.commit.parents > 1 then
+      -- merge commit
+      return #cell.commit.children == 0 and sym.merge_commit_end or sym.merge_commit
+    else
+      -- regular commit
+      return #cell.commit.children == 0 and sym.commit_end or sym.commit
+    end
+  end
+
+  ---@param row I.Row
+  ---@return string
+  local function row_to_graph_str(row)
+    local row_strs = {}
+    for j = 1, #row.cells do
+      local cell = row.cells[j]
+      if cell.connector then
+        cell.symbol = cell.connector
+      else
+        assert(cell.commit)
+        cell.symbol = commit_cell_symb(cell)
+      end
+      row_strs[#row_strs + 1] = cell.symbol
+    end
+    return table.concat(row_strs)
+  end
+
+  ---@param row I.Row
+  ---@param row_idx integer
+  ---@param continuation_symbols string[]
+  ---@return I.Highlight[]
+  local function row_to_graph_highlights(row, row_idx, continuation_symbols)
+    local row_hls = {}
+    local offset = 0
+
+    for j = 1, #row.cells do
+      local cell = row.cells[j]
+
+      local width = cell.symbol and #cell.symbol or 1
+      local start = offset
+      local stop = start + width
+      offset = offset + width
+
+      if cell.commit then
+        local hg = 'GitGraphBranch' .. tostring(j % NUM_BRANCH_COLORS + 1)
+        row_hls[#row_hls + 1] = { hg = hg, row = row_idx, start = start, stop = stop }
+      elseif cell.symbol == sym.GHOR then
+        -- take color from first right cell that attaches to this connector
+        for k = j + 1, #row.cells do
+          local rcell = row.cells[k]
+
+          if rcell.commit and vim.tbl_contains(continuation_symbols, rcell.symbol) then
+            local hg = 'GitGraphBranch' .. tostring(k % NUM_BRANCH_COLORS + 1)
+            row_hls[#row_hls + 1] = { hg = hg, row = row_idx, start = start, stop = stop }
+            break
+          end
+        end
+      end
+    end
+    return row_hls
+  end
+
+  local continuation_symbols = {
+    sym.GCLD,
+    sym.GCLU,
+    sym.GFORKD,
+    sym.GFORKU,
+    sym.GLUDCD,
+    sym.GLUDCU,
+    sym.GLRDCL,
+    sym.GLRUCL,
+  }
+
+  local head_found = false
+
+  for idx = 1, #graph do
+    local proper_row = graph[idx]
+
+    -- Generate graph line
+    if options.mode == 'test' then
+      local row_strs = {}
+      for i = 1, #proper_row.cells do
+        local cell = proper_row.cells[i]
+        if cell.connector then
+          row_strs[#row_strs + 1] = cell.connector
+        else
+          assert(cell.commit)
+          local symbol = cell.commit.msg
+          symbol = cell.emphasis and symbol:lower() or symbol
+          row_strs[#row_strs + 1] = symbol
+        end
+      end
+      graph_lines[#graph_lines + 1] = table.concat(row_strs)
+    else
+      graph_lines[#graph_lines + 1] = row_to_graph_str(proper_row)
+    end
+
+    -- Generate text line
+    local text_parts = {}
+    local text_offset = 0
+
+    local function add_text_part(text, highlight_type)
+      if text and text ~= '' then
+        if highlight_type then
+          text_highlights[#text_highlights + 1] = {
+            hg = ITEM_HGS[highlight_type].name,
+            row = idx,
+            start = text_offset,
+            stop = text_offset + #text,
+          }
+        end
+        text_parts[#text_parts + 1] = text
+        text_offset = text_offset + #text + 1 -- +1 for space separator
+      end
+    end
+
+    if options.mode ~= 'test' then
+      local c = proper_row.commit
+      if c then
+        local hash = c.hash:sub(1, 7)
+        local timestamp = c.author_date
+        local author = c.author_name
+        local branch_names = #c.branch_names > 0 and ('(%s)'):format(table.concat(c.branch_names, ' | ')) or nil
+        local tags = #c.tags > 0 and ('(%s)'):format(table.concat(c.tags, ' | ')) or nil
+
+        local is_head = false
+        if not head_found then
+          is_head = branch_names and branch_names:match('HEAD %->') or false
+          if is_head then
+            head_found = true
+            head_loc = idx
+          end
+        end
+
+        if is_head then
+          add_text_part('*')
+        end
+
+        add_text_part(hash, 'hash')
+        add_text_part(timestamp, 'timestamp')
+        add_text_part(author, 'author')
+        add_text_part(branch_names, 'branch_name')
+        add_text_part(tags, 'tag')
+
+        if options.mode == 'debug' then
+          local parents = ''
+          for _, h in ipairs(c.parents) do
+            local p = commits[h]
+            parents = parents .. (p and p.msg or '?')
+          end
+
+          local children = ''
+          for _, h in ipairs(c.children) do
+            local p = commits[h]
+            children = children .. (p and p.msg or '?')
+          end
+          if #children == 0 then
+            children = '_'
+          end
+          add_text_part(':  ' .. children .. ' ' .. c.msg .. ' ' .. parents)
+        end
+      else
+        -- Message row
+        local c = graph[idx - 1].commit
+        assert(c)
+        if options.mode ~= 'debug' then
+          add_text_part(c.msg, 'message')
+        end
+      end
+
+      -- Add graph highlights
+      for _, hl in ipairs(row_to_graph_highlights(proper_row, idx, continuation_symbols)) do
+        graph_highlights[#graph_highlights + 1] = hl
+      end
+    end
+
+    text_lines[#text_lines + 1] = table.concat(text_parts, ' ')
+  end
+
+  local dur = os.clock() - start
+  log.info('graph_to_lines_dual dur:', dur * 1000, 'ms')
+
+  return graph_lines, text_lines, graph_highlights, text_highlights, head_loc
+end
+
 ---@param cells I.Cell[]
 ---@return I.Cell[]
 local function propagate(cells)
@@ -824,7 +1076,14 @@ end
 ---@param curr_commit I.Commit
 ---@param next_commit I.Commit?
 ---@return I.Row, boolean
-local function generate_connector_row(commits, prev_commit_row, prev_connector_row, commit_row, commit_loc, curr_commit, next_commit)
+local function generate_connector_row(
+    commits,
+    prev_commit_row,
+    prev_connector_row,
+    commit_row,
+    commit_loc,
+    curr_commit,
+    next_commit)
   local found_bi_crossing = false
 
   -- connector row (reservation row)
@@ -932,7 +1191,10 @@ local function generate_connector_row(commits, prev_commit_row, prev_connector_r
     local connector_row = { cells = connector_cells } ---@type I.Row
 
     -- handle bi-connector rows
-    local is_bi_crossing, bi_crossing_safely_resolveable = utils.get_is_bi_crossing(commit_row, connector_row, next_commit)
+    local is_bi_crossing, bi_crossing_safely_resolveable = utils.get_is_bi_crossing(
+      commit_row,
+      connector_row,
+      next_commit)
 
     -- used for troubleshooting and tracking complexity of tests
     if is_bi_crossing then
@@ -984,7 +1246,14 @@ local function straight_j(commits, sorted_commits)
     local connector_row = nil ---@type I.Row
     local bi_crossing = false
     if i < #sorted_commits then
-      connector_row, bi_crossing = generate_connector_row(commits, prev_commit_row, prev_connector_row, commit_row, commit_loc, curr_commit, next_commit)
+      connector_row, bi_crossing = generate_connector_row(
+        commits,
+        prev_commit_row,
+        prev_connector_row,
+        commit_row,
+        commit_loc,
+        curr_commit,
+        next_commit)
       if bi_crossing then
         found_bi_crossing = true
       end
@@ -1029,6 +1298,29 @@ function M._gitgraph(raw_commits, opt, sym, fields)
   local lines, highlights, head_loc = graph_to_lines(opt, graph, sym, fields, commits)
 
   return graph, lines, highlights, head_loc, found_bi_crossing
+end
+
+function M._gitgraph_dual(raw_commits, opt, sym, fields)
+  sym = get_symbols(sym, opt)
+
+  local commits, sorted_commits = process_raw_commits(raw_commits)
+
+  populate_child_parent_data(commits, sorted_commits)
+
+  local graph, found_bi_crossing = straight_j(commits, sorted_commits)
+
+  insert_vert_and_hor_pipes(graph, sym)
+
+  insert_symbols_on_connector_rows(graph, sym)
+
+  local graph_lines, text_lines, graph_highlights, text_highlights, head_loc = graph_to_lines_dual(
+    opt,
+    graph,
+    sym,
+    fields,
+    commits)
+
+  return graph, graph_lines, text_lines, graph_highlights, text_highlights, head_loc
 end
 
 return M
