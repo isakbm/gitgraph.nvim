@@ -1,6 +1,6 @@
 # GitGraph Dual-Pane Mode
 
-GitGraph dual-pane mode provides a split-screen interface for viewing Git commit graphs with synchronized scrolling.
+GitGraph dual-pane mode provides a split-screen interface for viewing Git commit graphs with synchronized scrolling. The dual-pane mode opens in a new tab to avoid conflicts with existing buffers.
 
 ## Features
 
@@ -88,6 +88,7 @@ return {
 | `j/k` | Navigate up/down (synchronized) |
 | `h/l` | Horizontal scroll (independent per pane) |
 | `v + <CR>` | Select commit range (visual mode) |
+| `q` | Close dual-pane tab |
 
 ## Pane Layout
 
@@ -127,5 +128,8 @@ All standard GitGraph configuration options apply to dual-pane mode:
 
 - Requires Neovim 0.8+
 - Must be run from within a Git repository
+- Opens in a new tab to avoid buffer name conflicts
 - Creates two synchronized buffers with independent horizontal scrolling
 - Scroll synchronization can be toggled at runtime
+- Uses unique buffer names with timestamps to prevent conflicts
+- Press `q` to close the dual-pane tab

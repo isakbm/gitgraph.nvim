@@ -7,6 +7,7 @@ local log = require('gitgraph.log')
 ---@class I.DrawOptions
 ---@field mode? 'debug' | 'test'
 ---@field pretty? boolean
+---@field commit_info_as_branch_color? boolean
 
 ---@class I.Highlight
 ---@field hg string -- NOTE: fine to use string since lua internalizes strings
@@ -229,7 +230,8 @@ local function insert_vert_and_hor_pipes(graph, sym)
           local first_repeat = nil
           for k = 1, #row.cells, 2 do
             local cell_k, cell_j = row.cells[k], row.cells[j]
-            local rkc, rjc = (not cell_k.connector and cell_k.commit), (not cell_j.connector and cell_j.commit)
+            local rkc, rjc = (not cell_k.connector and cell_k.commit),
+                (not cell_j.connector and cell_j.commit)
 
             -- local rkc, rjc = row.cells[k].commit, row.cells[j].commit
 
@@ -248,7 +250,8 @@ local function insert_vert_and_hor_pipes(graph, sym)
             local this_k = graph[i].cells[k]
             local below_k = graph[i + 1].cells[k]
 
-            local bkc, tkc = (not below_k.connector and below_k.commit), (not this_k.connector and this_k.commit)
+            local bkc, tkc = (not below_k.connector and below_k.commit),
+                (not this_k.connector and this_k.commit)
 
             -- local bkc, tkc = below_k.commit, this_k.commit
             if (bkc and tkc) and bkc.hash == tkc.hash then
@@ -863,6 +866,18 @@ local function graph_to_lines_dual(options, graph, sym, fields, commits)
     return row_hls
   end
 
+  local function get_commit_branch_color_from_row(row)
+    for j = 1, #row.cells do
+      local cell = row.cells[j]
+      if cell.is_commit then
+        local color_index = j % NUM_BRANCH_COLORS + 1
+        local color_name = 'GitGraphBranch' .. tostring(color_index)
+        return color_name
+      end
+    end
+    return nil
+  end
+
   local continuation_symbols = {
     sym.GCLD,
     sym.GCLU,
@@ -917,6 +932,19 @@ local function graph_to_lines_dual(options, graph, sym, fields, commits)
       end
     end
 
+    local function add_text_part_branch(text, branch_color)
+      if text and text ~= '' then
+        text_highlights[#text_highlights + 1] = {
+          hg = branch_color,
+          row = idx,
+          start = text_offset,
+          stop = text_offset + #text,
+        }
+        text_parts[#text_parts + 1] = text
+        text_offset = text_offset + #text + 1 -- +1 for space separator
+      end
+    end
+
     if options.mode ~= 'test' then
       local c = proper_row.commit
       if c then
@@ -939,11 +967,18 @@ local function graph_to_lines_dual(options, graph, sym, fields, commits)
           add_text_part('*')
         end
 
-        add_text_part(hash, 'hash')
-        add_text_part(timestamp, 'timestamp')
-        add_text_part(author, 'author')
-        add_text_part(branch_names, 'branch_name')
-        add_text_part(tags, 'tag')
+        if options.commit_info_as_branch_color then
+          local commit_branch_color = get_commit_branch_color_from_row(proper_row)
+          add_text_part_branch(hash, commit_branch_color)
+          add_text_part_branch(timestamp, commit_branch_color)
+          add_text_part_branch(author, commit_branch_color)
+          add_text_part_branch(branch_names, commit_branch_color)
+        else
+          add_text_part(hash, 'hash')
+          add_text_part(timestamp, 'timestamp')
+          add_text_part(author, 'author')
+          add_text_part(branch_names, 'branch_name')
+        end
 
         if options.mode == 'debug' then
           local parents = ''

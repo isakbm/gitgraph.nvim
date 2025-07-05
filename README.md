@@ -43,6 +43,10 @@ Git Graph plugin for neovim.
         timestamp = '%H:%M:%S %d-%m-%Y',
         fields = { 'hash', 'timestamp', 'author', 'branch_name', 'tag' },
       },
+      -- Dual-pane specific options
+      dual = {
+        commit_info_as_branch_color = false, -- Use branch colors for commit info instead of default colors
+      },
       hooks = {
         on_select_commit = function(commit)
           print('selected commit:', commit.hash)
@@ -74,9 +78,10 @@ Git Graph plugin for neovim.
 
 ## Dual-Pane Mode
 
-GitGraph supports a dual-pane mode that splits the interface into two synchronized windows:
+GitGraph supports a dual-pane mode that splits the interface into two synchronized windows in a new tab:
 - **Left pane**: Visual git graph
 - **Right pane**: Commit details (hash, timestamp, author, message, etc.)
+- Opens in a new tab to avoid buffer conflicts with existing GitGraph instances
 
 ### Usage
 
@@ -98,6 +103,11 @@ require('gitgraph').draw_dual({}, { all = true, max_count = 5000 })
 | `<CR>` | Select commit under cursor |
 | `j/k` | Navigate up/down (synchronized) |
 | `h/l` | Horizontal scroll (independent per pane) |
+| `q` | Close dual-pane tab |
+
+### Dual-Pane Configuration Options
+
+- `commit_info_as_branch_color`: When enabled in dual-pane mode, commit information (hash, timestamp, author, branch names) uses the same colors as the corresponding branch in the graph instead of the default highlight groups.
 
 For more details, see [DUAL_PANE.md](DUAL_PANE.md).
 

@@ -4,6 +4,8 @@ local core = require('gitgraph.core')
 
 local M = {}
 
+local NS = vim.api.nvim_create_namespace('GitGraphDual')
+
 -- Store window and buffer IDs for synchronization
 M.graph_win = nil
 M.graph_buf = nil
@@ -67,7 +69,9 @@ end
 -- Apply buffer options for graph window
 local function apply_graph_buffer_options(buf, win)
   vim.api.nvim_set_option_value('modifiable', false, { buf = buf })
-  vim.api.nvim_buf_set_name(buf, 'GitGraph')
+  -- Use unique name with timestamp to avoid conflicts
+  local timestamp = os.time()
+  vim.api.nvim_buf_set_name(buf, 'GitGraph-Dual-' .. timestamp)
   vim.api.nvim_set_option_value('buflisted', false, { buf = buf })
 
   -- Set window-local options
@@ -93,7 +97,9 @@ end
 -- Apply buffer options for text window
 local function apply_text_buffer_options(buf, win)
   vim.api.nvim_set_option_value('modifiable', false, { buf = buf })
-  vim.api.nvim_buf_set_name(buf, 'GitGraph-Text')
+  -- Use unique name with timestamp to avoid conflicts
+  local timestamp = os.time()
+  vim.api.nvim_buf_set_name(buf, 'GitGraph-Text-Dual-' .. timestamp)
   vim.api.nvim_set_option_value('buflisted', false, { buf = buf })
 
   -- Set window-local options
@@ -165,6 +171,11 @@ local function apply_dual_buffer_mappings(graph_buf, text_buf, graph_data, hooks
         vim.api.nvim_set_current_win(M.graph_win)
       end
     end, { buffer = buf, desc = 'switch between graph and text windows' })
+
+    -- Close dual-pane tab
+    vim.keymap.set('n', 'q', function()
+      vim.cmd('tabclose')
+    end, { buffer = buf, desc = 'close dual-pane tab' })
   end
 end
 
@@ -182,14 +193,12 @@ function M.draw(config, options, args)
     return
   end
 
-  -- Create or reuse buffers
-  if not M.graph_buf or not vim.api.nvim_buf_is_valid(M.graph_buf) then
-    M.graph_buf = vim.api.nvim_create_buf(false, true)
-  end
+  -- Open in new tab for dual-pane mode
+  vim.cmd('tabnew')
 
-  if not M.text_buf or not vim.api.nvim_buf_is_valid(M.text_buf) then
-    M.text_buf = vim.api.nvim_create_buf(false, true)
-  end
+  -- Create new buffers for this tab
+  M.graph_buf = vim.api.nvim_create_buf(false, true)
+  M.text_buf = vim.api.nvim_create_buf(false, true)
 
   -- Create vertical split layout
   vim.cmd('vsplit')
@@ -228,17 +237,31 @@ function M.draw(config, options, args)
 
   -- Apply highlights asynchronously
   local function apply_highlights()
+    vim.api.nvim_buf_clear_namespace(M.graph_buf, NS, 0, -1)
+    vim.api.nvim_buf_clear_namespace(M.text_buf,  NS, 0, -1)
     -- Graph highlights
     for _, hl in ipairs(graph_highlights) do
       if hl.start and hl.stop and hl.start >= 0 and hl.stop >= hl.start then
-        vim.api.nvim_buf_add_highlight(M.graph_buf, -1, hl.hg, hl.row - 1, hl.start, hl.stop)
+        vim.hl.range(
+          M.graph_buf,
+          NS,
+          hl.hg,
+          { hl.row - 1, hl.start },
+          { hl.row - 1, hl.stop }
+        )
       end
     end
 
     -- Text highlights
     for _, hl in ipairs(text_highlights) do
       if hl.start and hl.stop and hl.start >= 0 and hl.stop >= hl.start then
-        vim.api.nvim_buf_add_highlight(M.text_buf, -1, hl.hg, hl.row - 1, hl.start, hl.stop)
+        vim.hl.range(
+          M.text_buf,
+          NS,
+          hl.hg,
+          { hl.row - 1, hl.start },
+          { hl.row - 1, hl.stop }
+        )
       end
     end
   end
