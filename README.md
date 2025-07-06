@@ -7,6 +7,7 @@ Git Graph plugin for neovim.
 # Roadmap - Goals
 
 ### Completed
+
 - ✔️ 100% lua
 - ✔️ temporal topological order
 - ✔️ branches stick to their lane
@@ -17,7 +18,9 @@ Git Graph plugin for neovim.
 - ✔️ performant scrolling
 - ✔️ easy to follow branch crossings
 - ✔️ dual-pane mode with synchronized scrolling
+
 ### Future
+
 - auto updating graph
 - performant load times for large repos
 
@@ -71,6 +74,13 @@ Git Graph plugin for neovim.
         end,
         desc = "GitGraph - Dual Pane",
       },
+      {
+        "<leader>gr",
+        function()
+          require('gitgraph').refresh()
+        end,
+        desc = "GitGraph - Refresh",
+      },
     },
   },
 
@@ -79,6 +89,7 @@ Git Graph plugin for neovim.
 ## Dual-Pane Mode
 
 GitGraph supports a dual-pane mode that splits the interface into two synchronized windows in a new tab:
+
 - **Left pane**: Visual git graph
 - **Right pane**: Commit details (hash, timestamp, author, message, etc.)
 - Opens in a new tab to avoid buffer conflicts with existing GitGraph instances
@@ -90,20 +101,28 @@ GitGraph supports a dual-pane mode that splits the interface into two synchroniz
 ```
 
 Or programmatically:
+
 ```lua
 require('gitgraph').draw_dual({}, { all = true, max_count = 5000 })
 ```
 
+### Refreshing GitGraph
+
+You can refresh the current git graph without reopening:
+
+```lua
+-- Refresh single-pane mode
+require('gitgraph').refresh()
+
+-- Refresh dual-pane mode
+require('gitgraph').refresh_dual()
+```
+
+Or use the built-in `<C-l>` shortcut (similar to Oil.nvim).
+
 ### Dual-Pane Keybindings
 
-| Key | Action |
-|-----|--------|
-| `<Tab>` | Switch between graph and text panes |
-| `<leader>gs` | Toggle scroll synchronization |
-| `<CR>` | Select commit under cursor |
-| `j/k` | Navigate up/down (synchronized) |
-| `h/l` | Horizontal scroll (independent per pane) |
-| `q` | Close dual-pane tab |
+See the [Keymaps](#keymaps) section below for complete key bindings.
 
 ### Dual-Pane Configuration Options
 
@@ -111,7 +130,7 @@ require('gitgraph').draw_dual({}, { all = true, max_count = 5000 })
 
 For more details, see [DUAL_PANE.md](DUAL_PANE.md).
 
-```
+````
 
 ## View commit with [Diffview.nvim](https://github.com/sindrets/diffview.nvim)
 
@@ -138,10 +157,12 @@ When in visual mode you get the `Diffview` for the selected range.
       },
     },
   },
-```
+````
 
 ## Use custom symbols
+
 For example, use **kitty** branch symbols [more detail](https://github.com/kovidgoyal/kitty/pull/7681)
+
 ```lua
   symbols = {
     merge_commit = '',
@@ -177,26 +198,45 @@ For example, use **kitty** branch symbols [more detail](https://github.com/kovid
 
 - `:GitGraph [args]` - Open single-pane git graph
 - `:GitGraphDual [args]` - Open dual-pane git graph
+- `:GitGraphRefresh` - Refresh dual-pane git graph (same as `<C-l>`)
+- `:GitGraphRefreshSingle` - Refresh single-pane git graph (same as `<C-l>`)
 
 # Keymaps
 
-... more keymaps to come ...
+### Single-Pane Mode
+
+| Key | Action |
+|-----|--------|
+| `<CR>` | Select commit under cursor |
+| `<C-l>` | Refresh single-pane gitgraph |
+
+### Dual-Pane Mode
+
+| Key | Action |
+|-----|--------|
+| `<Tab>` | Switch between graph and text panes |
+| `<leader>gs` | Toggle scroll synchronization |
+| `<CR>` | Select commit under cursor |
+| `j/k` | Navigate up/down (synchronized) |
+| `h/l` | Horizontal scroll (independent per pane) |
+| `<C-l>` | Refresh dual-pane gitgraph |
+| `q` | Close dual-pane tab |
 
 # Highlights Groups
 
 ## commit information
 
-  - 'GitGraphHash'
-  - 'GitGraphTimestamp'
-  - 'GitGraphAuthor'
-  - 'GitGraphBranchName'
-  - 'GitGraphBranchTag'
-  - 'GitGraphBranchMsg'
+- 'GitGraphHash'
+- 'GitGraphTimestamp'
+- 'GitGraphAuthor'
+- 'GitGraphBranchName'
+- 'GitGraphBranchTag'
+- 'GitGraphBranchMsg'
 
 ## branch colors
 
-  - 'GitGraphBranch1'
-  - 'GitGraphBranch2'
-  - 'GitGraphBranch3'
-  - 'GitGraphBranch4'
-  - 'GitGraphBranch5'
+- 'GitGraphBranch1'
+- 'GitGraphBranch2'
+- 'GitGraphBranch3'
+- 'GitGraphBranch4'
+- 'GitGraphBranch5'

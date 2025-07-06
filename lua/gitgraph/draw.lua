@@ -10,6 +10,11 @@ local M = {}
 function M.draw(config, options, args)
   M.graph = {}
 
+  -- Store parameters for refresh
+  M.last_config = config
+  M.last_options = options
+  M.last_args = args
+
   local so = os.clock()
 
   if utils.check_cmd('git --version') then
@@ -34,11 +39,11 @@ function M.draw(config, options, args)
   assert(buf)
   vim.api.nvim_win_set_buf(0, buf)
 
-  vim.api.nvim_set_option_value('modifiable', true, { buf = buf }) -- make modifiable
-  vim.api.nvim_set_option_value('buflisted', false, { buf = buf }) -- unlisted
+  vim.api.nvim_set_option_value('modifiable', true, { buf = buf })  -- make modifiable
+  vim.api.nvim_set_option_value('buflisted', false, { buf = buf })  -- unlisted
   vim.api.nvim_set_option_value('wrap', false, { scope = 'local' }) -- turn off linewrap
 
-  vim.api.nvim_buf_clear_namespace(buf, -1, 0, -1) -- clear highlights
+  vim.api.nvim_buf_clear_namespace(buf, -1, 0, -1)                  -- clear highlights
 
   -- clear
   do
@@ -90,6 +95,27 @@ function M.draw(config, options, args)
 
   local tot_dur = os.clock() - so
   log.info('total dur:', tot_dur * 1000, 'ms')
+end
+
+-- Store last used parameters for refresh
+M.last_config = nil
+M.last_options = nil
+M.last_args = nil
+
+-- Refresh function for single-pane mode
+function M.refresh()
+  if not M.last_config or not M.last_options or not M.last_args then
+    print('GitGraph: No previous session to refresh')
+    return
+  end
+
+  -- Check if buffer is still valid
+  if not M.buf or not vim.api.nvim_buf_is_valid(M.buf) then
+    print('GitGraph: Buffer is no longer valid')
+    return
+  end
+
+  M.draw(M.last_config, M.last_options, M.last_args)
 end
 
 return M

@@ -68,7 +68,7 @@ function M.resolve_bi_crossing(prev_commit_row, prev_connector_row, commit_row, 
   --   B         A              ⓚ         │
   --   a         A              ⓶─────────╯
   --   A                        ⓚ
-  local prev_prev_row = prev_connector_row -- graph[#graph - 2]
+  local prev_prev_row = prev_connector_row   -- graph[#graph - 2]
   local prev_prev_prev_row = prev_commit_row -- graph[#graph - 3]
   assert(prev_prev_row and prev_prev_prev_row)
   do
@@ -332,6 +332,10 @@ function M.apply_buffer_mappings(buf_id, graph, hooks)
       hooks.on_select_range_commit(from_commit, to_commit)
     end
   end, { buffer = buf_id, desc = 'select range of commit' })
+
+  vim.keymap.set('n', '<C-l>', function()
+    require('gitgraph.draw').refresh()
+  end, { buffer = buf_id, desc = 'refresh gitgraph' })
 end
 
 ---@param cmd string

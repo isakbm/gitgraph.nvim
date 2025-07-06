@@ -55,6 +55,22 @@ local function setup_commands()
       end
     })
   end
+
+  -- Register GitGraphRefresh command for dual-pane
+  vim.api.nvim_create_user_command('GitGraphRefresh', function()
+    local gitgraph = require('gitgraph')
+    gitgraph.refresh_dual()
+  end, {
+    desc = 'Refresh GitGraph dual-pane mode',
+  })
+
+  -- Register GitGraphRefreshSingle command for single-pane
+  vim.api.nvim_create_user_command('GitGraphRefreshSingle', function()
+    local gitgraph = require('gitgraph')
+    gitgraph.refresh()
+  end, {
+    desc = 'Refresh GitGraph single-pane mode',
+  })
 end
 
 -- Setup commands when plugin loads

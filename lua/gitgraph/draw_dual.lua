@@ -176,13 +176,40 @@ local function apply_dual_buffer_mappings(graph_buf, text_buf, graph_data, hooks
     vim.keymap.set('n', 'q', function()
       vim.cmd('tabclose')
     end, { buffer = buf, desc = 'close dual-pane tab' })
+
+    -- Refresh dual-pane
+    vim.keymap.set('n', '<C-l>', function()
+      M.refresh()
+    end, { buffer = buf, desc = 'refresh dual-pane gitgraph' })
   end
 end
 
----@param config I.GGConfig
----@param options I.DrawOptions
----@param args I.GitLogArgs
-function M.draw(config, options, args)
+-- Store last used parameters for refresh
+M.last_config = nil
+M.last_options = nil
+M.last_args = nil
+
+-- Refresh function for dual-pane mode
+function M.refresh()
+  if not M.last_config or not M.last_options or not M.last_args then
+    print('GitGraph: No previous dual-pane session to refresh')
+    return
+  end
+
+  -- Check if windows and buffers are still valid
+  if not M.graph_win or not vim.api.nvim_win_is_valid(M.graph_win) or
+      not M.text_win or not vim.api.nvim_win_is_valid(M.text_win) or
+      not M.graph_buf or not vim.api.nvim_buf_is_valid(M.graph_buf) or
+      not M.text_buf or not vim.api.nvim_buf_is_valid(M.text_buf) then
+    print('GitGraph: Dual-pane windows/buffers are no longer valid')
+    return
+  end
+
+  M.draw_content(M.last_config, M.last_options, M.last_args)
+end
+
+-- Helper function to draw content (separated from tab/window creation)
+function M.draw_content(config, options, args)
   if utils.check_cmd('git --version') then
     log.error('git command not found, please install it')
     return
@@ -193,24 +220,10 @@ function M.draw(config, options, args)
     return
   end
 
-  -- Open in new tab for dual-pane mode
-  vim.cmd('tabnew')
-
-  -- Create new buffers for this tab
-  M.graph_buf = vim.api.nvim_create_buf(false, true)
-  M.text_buf = vim.api.nvim_create_buf(false, true)
-
-  -- Create vertical split layout
-  vim.cmd('vsplit')
-
-  -- Set up graph window (left)
-  M.graph_win = vim.api.nvim_get_current_win()
-  vim.api.nvim_win_set_buf(M.graph_win, M.graph_buf)
-
-  -- Set up text window (right)
-  vim.cmd('wincmd l')
-  M.text_win = vim.api.nvim_get_current_win()
-  vim.api.nvim_win_set_buf(M.text_win, M.text_buf)
+  -- Store parameters for refresh
+  M.last_config = config
+  M.last_options = options
+  M.last_args = args
 
   -- Make buffers modifiable for editing
   vim.api.nvim_set_option_value('modifiable', true, { buf = M.graph_buf })
@@ -238,7 +251,7 @@ function M.draw(config, options, args)
   -- Apply highlights asynchronously
   local function apply_highlights()
     vim.api.nvim_buf_clear_namespace(M.graph_buf, NS, 0, -1)
-    vim.api.nvim_buf_clear_namespace(M.text_buf,  NS, 0, -1)
+    vim.api.nvim_buf_clear_namespace(M.text_buf, NS, 0, -1)
     -- Graph highlights
     for _, hl in ipairs(graph_highlights) do
       if hl.start and hl.stop and hl.start >= 0 and hl.stop >= hl.start then
@@ -290,16 +303,43 @@ function M.draw(config, options, args)
   apply_graph_buffer_options(M.graph_buf, M.graph_win)
   apply_text_buffer_options(M.text_buf, M.text_win)
 
-  -- Apply mappings
-  apply_dual_buffer_mappings(M.graph_buf, M.text_buf, graph, config.hooks)
-
-  -- Set up scroll synchronization
-  setup_scroll_sync()
-
   -- Set focus to graph window
   if M.graph_win and vim.api.nvim_win_is_valid(M.graph_win) then
     vim.api.nvim_set_current_win(M.graph_win)
   end
+end
+
+---@param config I.GGConfig
+---@param options I.DrawOptions
+---@param args I.GitLogArgs
+function M.draw(config, options, args)
+  -- Open in new tab for dual-pane mode
+  vim.cmd('tabnew')
+
+  -- Create new buffers for this tab
+  M.graph_buf = vim.api.nvim_create_buf(false, true)
+  M.text_buf = vim.api.nvim_create_buf(false, true)
+
+  -- Create vertical split layout
+  vim.cmd('vsplit')
+
+  -- Set up graph window (left)
+  M.graph_win = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(M.graph_win, M.graph_buf)
+
+  -- Set up text window (right)
+  vim.cmd('wincmd l')
+  M.text_win = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(M.text_win, M.text_buf)
+
+  -- Draw content using helper function
+  M.draw_content(config, options, args)
+
+  -- Apply mappings
+  apply_dual_buffer_mappings(M.graph_buf, M.text_buf, M.graph, config.hooks)
+
+  -- Set up scroll synchronization
+  setup_scroll_sync()
 end
 
 return M
