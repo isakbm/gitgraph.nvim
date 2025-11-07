@@ -3,6 +3,11 @@
 
 local utils = require('gitgraph.utils')
 local log = require('gitgraph.log')
+local ui = require('gitgraph.ui')
+
+---@class I.DrawOptions
+---@field mode? 'debug' | 'test'
+---@field pretty? boolean
 
 ---@class I.DrawOptions
 ---@field mode? 'debug' | 'test'
@@ -29,6 +34,7 @@ local M = {}
 ---@return string[]
 ---@return I.Highlight[]
 ---@return integer?
+
 function M.gitgraph(config, options, args)
   --- depends on `git`
   local data = require('gitgraph.git').git_log_pretty(args, config.format.timestamp)
@@ -38,6 +44,16 @@ function M.gitgraph(config, options, args)
   local graph, lines, highlights, head_loc = M._gitgraph(data, options, config.symbols, config.format.fields)
   local dur = os.clock() - start
   log.info('_gitgraph dur:', dur * 1000, 'ms')
+
+  if config.window then
+    if not config.window.buf or not vim.api.nvim_buf_is_valid(config.window.buf) then
+      local buf, win = ui.open(lines, highlights, config.window)
+      config.window.buf = buf
+      config.window.win = win
+    else
+      ui.update(config.window.buf, lines, highlights, config.window)
+    end
+  end
 
   return graph, lines, highlights, head_loc
 end
@@ -1013,6 +1029,7 @@ end
 ---@return I.Highlight[]
 ---@return integer? -- head location
 ---@return boolean -- true if contained bi-crossing
+
 function M._gitgraph(raw_commits, opt, sym, fields)
   sym = get_symbols(sym, opt)
 

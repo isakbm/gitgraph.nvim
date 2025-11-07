@@ -1,6 +1,7 @@
 local log = require('gitgraph.log')
 local config = require('gitgraph.config')
 local highlights = require('gitgraph.highlights')
+local draw = require('gitgraph.draw')
 
 local M = {
   config = config.defaults,
@@ -9,9 +10,21 @@ local M = {
   graph = {}, ---@type I.Row[]
 }
 
+--- Setup commands
+function M.setup_commands()
+  vim.api.nvim_create_user_command('GitGraph', function()
+    draw.toggle(M.config, {}, {})
+  end, {})
+
+  vim.api.nvim_create_user_command('GitGraphClose', function()
+    draw.close()
+  end, {})
+end
+
 --- Setup
 ---@param user_config I.GGConfig
 function M.setup(user_config)
+  M.setup_commands()
   M.config = vim.tbl_deep_extend('force', M.config, user_config)
 
   highlights.set_highlights()

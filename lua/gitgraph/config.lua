@@ -26,6 +26,13 @@ local log = require('gitgraph.log')
 ---@field GLRUCL string
 ---@field GLRUCR string
 
+---@class I.Window
+---@field layout string
+---@field width number
+---@field height number
+---@field close string
+---@field border string
+
 ---@alias I.GGVarName "hash" | "timestamp" | "author" | "branch_name" | "tag" | "message"
 
 ---@class I.GGFormat
@@ -46,7 +53,18 @@ local M = {}
 
 ---@type I.GGConfig
 M.defaults = {
-  git_cmd = "git",
+  git_cmd = 'git',
+
+  window = {
+    layout = 'float', -- float || split || vsplit || full
+    -- if layout is float
+    width = 0.8, -- screen share or number of columns
+    height = 0.8, -- screen share or number of lines
+
+    close = 'q', -- if current buffer is gitgraph, close it
+    border = 'rounded', -- single || double || rounded || none
+  },
+
   symbols = {
     merge_commit = 'M',
     commit = '*',

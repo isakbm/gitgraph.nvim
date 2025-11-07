@@ -7,6 +7,7 @@ Git Graph plugin for neovim.
 # Roadmap - Goals
 
 ### Completed
+
 - ✔️ 100% lua
 - ✔️ temporal topological order
 - ✔️ branches stick to their lane
@@ -16,7 +17,9 @@ Git Graph plugin for neovim.
 - ✔️ easily configurable highlight groups
 - ✔️ performant scrolling
 - ✔️ easy to follow branch crossings
+
 ### Future
+
 - auto updating graph
 - performant load times for large repos
 
@@ -32,8 +35,20 @@ Git Graph plugin for neovim.
 ```lua
   {
     'isakbm/gitgraph.nvim',
+    event = "VeryLazy",
     opts = {
       git_cmd = "git",
+
+      window = {
+        layout = "float", -- float || split || vsplit || full
+        -- if layout is float
+        width = 0.8, -- screen share or number of columns
+        height = 0.8, -- screen share or number of lines
+
+        close = "q", -- if current buffer is gitgraph, close it
+        border = "rounded", -- single || double || rounded || none
+      },
+
       symbols = {
         merge_commit = 'M',
         commit = '*',
@@ -51,15 +66,7 @@ Git Graph plugin for neovim.
         end,
       },
     },
-    keys = {
-      {
-        "<leader>gl",
-        function()
-          require('gitgraph').draw({}, { all = true, max_count = 5000 })
-        end,
-        desc = "GitGraph - Draw",
-      },
-    },
+	keys = { { "<leader>gl", "<cmd>GitGraph<cr>", desc = "GitGraph - Toggle" } },
   },
 
 ```
@@ -69,6 +76,7 @@ Git Graph plugin for neovim.
 When in the git graph buffer you can open `Diffview` on the commit under the cursor with `Enter`.
 
 When in visual mode you get the `Diffview` for the selected range.
+
 ```lua
   {
     'isakbm/gitgraph.nvim',
@@ -92,7 +100,9 @@ When in visual mode you get the `Diffview` for the selected range.
 ```
 
 ## Use custom symbols
+
 For example, use **kitty** branch symbols [more detail](https://github.com/kovidgoyal/kitty/pull/7681)
+
 ```lua
   symbols = {
     merge_commit = '',
@@ -132,17 +142,17 @@ For example, use **kitty** branch symbols [more detail](https://github.com/kovid
 
 ## commit information
 
-  - 'GitGraphHash'
-  - 'GitGraphTimestamp'
-  - 'GitGraphAuthor'
-  - 'GitGraphBranchName'
-  - 'GitGraphBranchTag'
-  - 'GitGraphBranchMsg'
+- 'GitGraphHash'
+- 'GitGraphTimestamp'
+- 'GitGraphAuthor'
+- 'GitGraphBranchName'
+- 'GitGraphBranchTag'
+- 'GitGraphBranchMsg'
 
 ## branch colors
 
-  - 'GitGraphBranch1'
-  - 'GitGraphBranch2'
-  - 'GitGraphBranch3'
-  - 'GitGraphBranch4'
-  - 'GitGraphBranch5'
+- 'GitGraphBranch1'
+- 'GitGraphBranch2'
+- 'GitGraphBranch3'
+- 'GitGraphBranch4'
+- 'GitGraphBranch5'
