@@ -139,6 +139,8 @@ For example, use **kitty** branch symbols [more detail](https://github.com/kovid
   - 'GitGraphBranchTag'
   - 'GitGraphBranchMsg'
 
+Commit hashes use the same branch highlight group as the commit lane when available. `GitGraphHash` remains as the fallback highlight group.
+
 ## branch colors
 
   - 'GitGraphBranch1'
