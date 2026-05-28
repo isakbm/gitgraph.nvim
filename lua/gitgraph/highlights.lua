@@ -21,6 +21,11 @@ M.BRANCH_HGS = {
   { name = 'GitGraphBranch3', fg = '#d79921' },
   { name = 'GitGraphBranch4', fg = '#98971a' },
   { name = 'GitGraphBranch5', fg = '#d5651c' },
+  { name = 'GitGraphBranch6', fg = '#689d6a' },
+  { name = 'GitGraphBranch7', fg = '#cc241d' },
+  { name = 'GitGraphBranch8', fg = '#83a598' },
+  { name = 'GitGraphBranch9', fg = '#8ec07c' },
+  { name = 'GitGraphBranch10', fg = '#fabd2f' },
 }
 
 --- sets highlight groups if they are missing

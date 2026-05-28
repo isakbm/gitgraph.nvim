@@ -148,3 +148,8 @@ Commit hashes use the same branch highlight group as the commit lane when availa
   - 'GitGraphBranch3'
   - 'GitGraphBranch4'
   - 'GitGraphBranch5'
+  - 'GitGraphBranch6'
+  - 'GitGraphBranch7'
+  - 'GitGraphBranch8'
+  - 'GitGraphBranch9'
+  - 'GitGraphBranch10'
