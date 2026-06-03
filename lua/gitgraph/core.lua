@@ -484,6 +484,12 @@ local function graph_to_lines(options, graph, sym, fields, commits)
     end
   end
 
+  ---@param branch_names string
+  ---@return integer?, integer?
+  local function find_head_ref_range(branch_names)
+    return branch_names:find('HEAD %-> [^|%)]+')
+  end
+
   ---@param cell I.Cell
   ---@return string
   local function commit_cell_symb(cell)
@@ -687,12 +693,26 @@ local function graph_to_lines(options, graph, sym, fields, commits)
         for _, name in ipairs(fields) do
           local value = items[name]
           if value then
+            local start = offset
             highlights[#highlights + 1] = {
               hg = name == 'hash' and hash_hg or ITEM_HGS[name].name,
               row = idx,
-              start = offset,
-              stop = offset + #value,
+              start = start,
+              stop = start + #value,
             }
+
+            if name == 'branch_name' then
+              local head_start, head_stop = find_head_ref_range(value)
+              if head_start and head_stop then
+                highlights[#highlights + 1] = {
+                  hg = ITEM_HGS.head.name,
+                  row = idx,
+                  start = start + head_start - 1,
+                  stop = start + head_stop,
+                }
+              end
+            end
+
             add_to_row(value)
           end
         end
