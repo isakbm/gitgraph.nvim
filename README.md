@@ -136,8 +136,12 @@ For example, use **kitty** branch symbols [more detail](https://github.com/kovid
   - 'GitGraphTimestamp'
   - 'GitGraphAuthor'
   - 'GitGraphBranchName'
+  - 'GitGraphHead'
   - 'GitGraphBranchTag'
   - 'GitGraphBranchMsg'
+
+Commit hashes use the same branch highlight group as the commit lane when available. `GitGraphHash` remains as the fallback highlight group.
+`HEAD -> branch_name` uses `GitGraphHead`, which defaults to Tokyo Night style red.
 
 ## branch colors
 
@@ -146,3 +150,8 @@ For example, use **kitty** branch symbols [more detail](https://github.com/kovid
   - 'GitGraphBranch3'
   - 'GitGraphBranch4'
   - 'GitGraphBranch5'
+  - 'GitGraphBranch6'
+  - 'GitGraphBranch7'
+  - 'GitGraphBranch8'
+  - 'GitGraphBranch9'
+  - 'GitGraphBranch10'

@@ -467,6 +467,29 @@ local function graph_to_lines(options, graph, sym, fields, commits)
   ---@type I.Highlight[]
   local highlights = {}
 
+  ---@param col integer
+  ---@return string
+  local function branch_hg_for_col(col)
+    return 'GitGraphBranch' .. tostring(col % NUM_BRANCH_COLORS + 1)
+  end
+
+  ---@param row I.Row
+  ---@param commit_hash string
+  ---@return string?
+  local function branch_hg_for_commit(row, commit_hash)
+    for col, cell in ipairs(row.cells) do
+      if cell.commit and cell.commit.hash == commit_hash then
+        return branch_hg_for_col(col)
+      end
+    end
+  end
+
+  ---@param branch_names string
+  ---@return integer?, integer?
+  local function find_head_ref_range(branch_names)
+    return branch_names:find('HEAD %-> [^|%)]+')
+  end
+
   ---@param cell I.Cell
   ---@return string
   local function commit_cell_symb(cell)
@@ -519,7 +542,7 @@ local function graph_to_lines(options, graph, sym, fields, commits)
       offset = offset + width
 
       if cell.commit then
-        local hg = 'GitGraphBranch' .. tostring(j % NUM_BRANCH_COLORS + 1)
+        local hg = branch_hg_for_col(j)
         row_hls[#row_hls + 1] = { hg = hg, row = row_idx, start = start, stop = stop }
       elseif cell.symbol == sym.GHOR then
         -- take color from first right cell that attaches to this connector
@@ -530,7 +553,7 @@ local function graph_to_lines(options, graph, sym, fields, commits)
           --       to figure out where our vertical branch is
 
           if rcell.commit and vim.tbl_contains(continuation_symbols, rcell.symbol) then
-            local hg = 'GitGraphBranch' .. tostring(k % NUM_BRANCH_COLORS + 1)
+            local hg = branch_hg_for_col(k)
             row_hls[#row_hls + 1] = { hg = hg, row = row_idx, start = start, stop = stop }
             break
           end
@@ -632,6 +655,7 @@ local function graph_to_lines(options, graph, sym, fields, commits)
         local hash = c.hash:sub(1, 7)
         local timestamp = c.author_date
         local author = c.author_name
+        local hash_hg = branch_hg_for_commit(proper_row, c.hash) or ITEM_HGS.hash.name
 
         local branch_names = #c.branch_names > 0 and ('(%s)'):format(table.concat(c.branch_names, ' | ')) or nil
 
@@ -669,12 +693,26 @@ local function graph_to_lines(options, graph, sym, fields, commits)
         for _, name in ipairs(fields) do
           local value = items[name]
           if value then
+            local start = offset
             highlights[#highlights + 1] = {
-              hg = ITEM_HGS[name].name,
+              hg = name == 'hash' and hash_hg or ITEM_HGS[name].name,
               row = idx,
-              start = offset,
-              stop = offset + #value,
+              start = start,
+              stop = start + #value,
             }
+
+            if name == 'branch_name' then
+              local head_start, head_stop = find_head_ref_range(value)
+              if head_start and head_stop then
+                highlights[#highlights + 1] = {
+                  hg = ITEM_HGS.head.name,
+                  row = idx,
+                  start = start + head_start - 1,
+                  stop = start + head_stop,
+                }
+              end
+            end
+
             add_to_row(value)
           end
         end
