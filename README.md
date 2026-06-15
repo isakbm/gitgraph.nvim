@@ -72,7 +72,7 @@ When in visual mode you get the `Diffview` for the selected range.
 ```lua
   {
     'isakbm/gitgraph.nvim',
-    dependencies = { 'sindrets/diffview.nvim' },
+    dependencies = { 'sindrets/diffview.nvim' },  -- alternatively: 'dlyongemallo/diffview-plus.nvim'
     ---@type I.GGConfig
     opts = {
       hooks = {
