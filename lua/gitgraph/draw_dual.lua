@@ -73,11 +73,13 @@ local function apply_graph_buffer_options(buf, win)
   local timestamp = os.time()
   vim.api.nvim_buf_set_name(buf, 'GitGraph-Dual-' .. timestamp)
   vim.api.nvim_set_option_value('buflisted', false, { buf = buf })
+  vim.api.nvim_set_option_value('bufhidden', 'wipe', { buf = buf }) -- ← самоочистка при закрытии вкладки
 
   -- Set window-local options
   if win and vim.api.nvim_win_is_valid(win) then
     vim.api.nvim_set_option_value('wrap', false, { win = win })
     vim.api.nvim_set_option_value('cursorline', true, { win = win })
+    vim.api.nvim_set_option_value('winfixbuf', true, { win = win }) -- ← окно неподменяемо: gf/:edit сюда не влетит
   end
 
   local options = {
@@ -101,11 +103,13 @@ local function apply_text_buffer_options(buf, win)
   local timestamp = os.time()
   vim.api.nvim_buf_set_name(buf, 'GitGraph-Text-Dual-' .. timestamp)
   vim.api.nvim_set_option_value('buflisted', false, { buf = buf })
+  vim.api.nvim_set_option_value('bufhidden', 'wipe', { buf = buf }) -- ← самоочистка при закрытии вкладки
 
   -- Set window-local options
   if win and vim.api.nvim_win_is_valid(win) then
     vim.api.nvim_set_option_value('wrap', false, { win = win })
     vim.api.nvim_set_option_value('cursorline', true, { win = win })
+    vim.api.nvim_set_option_value('winfixbuf', true, { win = win }) -- ← окно неподменяемо: gf/:edit сюда не влетит
   end
 
   local options = {
@@ -315,6 +319,7 @@ end
 function M.draw(config, options, args)
   -- Open in new tab for dual-pane mode
   vim.cmd('tabnew')
+  local leftover = vim.api.nvim_get_current_buf() -- пустой [No Name] от tabnew
 
   -- Create new buffers for this tab
   M.graph_buf = vim.api.nvim_create_buf(false, true)
@@ -331,6 +336,13 @@ function M.draw(config, options, args)
   vim.cmd('wincmd l')
   M.text_win = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(M.text_win, M.text_buf)
+
+  -- ← добить осиротевший буфер от tabnew (больше не показан ни в одном окне)
+  if vim.api.nvim_buf_is_valid(leftover)
+      and leftover ~= M.graph_buf and leftover ~= M.text_buf
+      and vim.api.nvim_buf_get_name(leftover) == '' then
+    pcall(vim.api.nvim_buf_delete, leftover, { force = true })
+  end
 
   -- Draw content using helper function
   M.draw_content(config, options, args)
